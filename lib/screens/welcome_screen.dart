@@ -15,11 +15,7 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.bloodtype,
-                size: 120,
-                color: Colors.red,
-              ),
+              const Icon(Icons.bloodtype, size: 120, color: Colors.red),
               const SizedBox(height: 20),
               const Text(
                 'MyDarah',
@@ -32,18 +28,13 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Malaysia',
-                style: TextStyle(
-                  fontSize: 18,
-                  letterSpacing: 3,
-                ),
+                style: TextStyle(fontSize: 18, letterSpacing: 3),
               ),
               const SizedBox(height: 20),
               const Text(
                 'Be a hero. Donate blood. Save lives.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 50),
               SizedBox(
@@ -64,9 +55,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   child: const Text(
                     'Get Started',
-                    style: TextStyle(
-                      fontSize: 17,
-                    ),
+                    style: TextStyle(fontSize: 17),
                   ),
                 ),
               ),

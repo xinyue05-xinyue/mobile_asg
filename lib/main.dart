@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'app/theme/app_theme.dart';
+import 'data/remote/supabase_service.dart';
 import 'screens/welcome_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.initialize();
   runApp(const MyDarahApp());
 }
 
@@ -15,15 +19,8 @@ class MyDarahApp extends StatelessWidget {
     return MaterialApp(
       title: 'MyDarah',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.red
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       home: const WelcomeScreen(),
     );
   }
 }
-
-

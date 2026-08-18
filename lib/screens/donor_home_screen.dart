@@ -21,18 +21,12 @@ class DonorHomeScreen extends StatelessWidget {
           children: [
             const Text(
               'Hi, Donor 👋',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
               'Welcome back!',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
             Card(
@@ -43,8 +37,7 @@ class DonorHomeScreen extends StatelessWidget {
                   children: [
                     const Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'You can save lives',
@@ -57,25 +50,17 @@ class DonorHomeScreen extends StatelessWidget {
                           SizedBox(height: 8),
                           Text(
                             'Be a blood donor',
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
+                            style: TextStyle(color: Colors.white),
                           ),
                           SizedBox(height: 18),
                           Text(
                             'Blood Type: O+',
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
+                            style: TextStyle(color: Colors.white),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.bloodtype,
-                      size: 70,
-                      color: Colors.white,
-                    ),
+                    Icon(Icons.bloodtype, size: 70, color: Colors.white),
                   ],
                 ),
               ),
@@ -88,45 +73,13 @@ class DonorHomeScreen extends StatelessWidget {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               children: const [
-                HomeMenuItem(
-                  icon: Icons.location_on,
-                  title: 'Find Centre',
-                ),
-                HomeMenuItem(
-                  icon: Icons.event,
-                  title: 'Events',
-                ),
-                HomeMenuItem(
-                  icon: Icons.history,
-                  title: 'My Donations',
-                ),
+                HomeMenuItem(icon: Icons.location_on, title: 'Find Centre'),
+                HomeMenuItem(icon: Icons.event, title: 'Events'),
+                HomeMenuItem(icon: Icons.history, title: 'My Donations'),
               ],
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Find',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Events',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
@@ -136,11 +89,7 @@ class HomeMenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const HomeMenuItem({
-    super.key,
-    required this.icon,
-    required this.title,
-  });
+  const HomeMenuItem({super.key, required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -151,16 +100,9 @@ class HomeMenuItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: Colors.red,
-              size: 35,
-            ),
+            Icon(icon, color: Colors.red, size: 35),
             const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-            ),
+            Text(title, textAlign: TextAlign.center),
           ],
         ),
       ),
