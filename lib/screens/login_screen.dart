@@ -6,6 +6,7 @@ import '../data/remote/supabase_service.dart';
 import '../models/user_role.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'donor/donor_shell.dart';
+import 'registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -112,6 +113,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Login', style: TextStyle(fontSize: 17)),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RegistrationScreen()),
+              ),
+              child: const Text('Create a donor account'),
             ),
             if (!SupabaseService.isConfigured) ...[
               const SizedBox(height: 16),

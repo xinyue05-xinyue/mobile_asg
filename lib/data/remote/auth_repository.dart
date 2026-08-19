@@ -7,6 +7,22 @@ class AuthRepository {
 
   final SupabaseClient client;
 
+  Future<bool> signUp({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    final response = await client.auth.signUp(
+      email: email,
+      password: password,
+      data: {'full_name': fullName},
+    );
+    if (response.user == null) {
+      throw const AuthException('Unable to create the account.');
+    }
+    return response.session != null;
+  }
+
   Future<UserRole> signIn({
     required String email,
     required String password,
