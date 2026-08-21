@@ -1,0 +1,57 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../models/emergency_response.dart';
+
+class EmergencyResponseRepository {
+  const EmergencyResponseRepository(this.client);
+
+  final SupabaseClient client;
+
+  Future<Set<String>> getMyPendingRequestIds() async {
+    final user = client.auth.currentUser;
+    if (user == null) return const {};
+    final rows = await client
+        .from('emergency_responses')
+        .select('request_id')
+        .eq('donor_id', user.id)
+        .eq('status', 'pending');
+    return rows.map((row) => row['request_id']! as String).toSet();
+  }
+
+  Future<void> respond(String requestId) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    await client.from('emergency_responses').insert({
+      'request_id': requestId,
+      'donor_id': user.id,
+    });
+  }
+
+  Future<List<EmergencyResponse>> getForRequest(String requestId) async {
+    final rows = await client
+        .from('emergency_responses')
+        .select(
+          'id, request_id, donor_id, status, created_at, '
+          'donor:profiles!emergency_responses_donor_id_fkey(full_name, blood_type)',
+        )
+        .eq('request_id', requestId)
+        .order('created_at');
+    return rows.map(EmergencyResponse.fromMap).toList();
+  }
+
+  Future<void> verifyDonation({
+    required String responseId,
+    required DateTime nextEligibleDate,
+  }) async {
+    await client.rpc(
+      'verify_emergency_donation',
+      params: {
+        'p_response_id': responseId,
+        'p_next_eligible_date': nextEligibleDate
+            .toIso8601String()
+            .split('T')
+            .first,
+      },
+    );
+  }
+}
