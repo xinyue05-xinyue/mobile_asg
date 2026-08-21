@@ -123,7 +123,7 @@ using (id = auth.uid())
 with check (id = auth.uid());
 
 revoke update on public.profiles from authenticated;
-grant update (full_name, blood_type, phone, date_of_birth, next_eligible_date, notifications_enabled)
+grant update (full_name, blood_type, phone, date_of_birth, notifications_enabled)
 on public.profiles to authenticated;
 
 create policy centres_read on public.donation_centres

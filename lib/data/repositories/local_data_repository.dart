@@ -95,6 +95,20 @@ class LocalDataRepository {
     await batch.commit(noResult: true);
   }
 
+  Future<void> replaceCentres(Iterable<DonationCentre> centres) async {
+    final database = await _appDatabase.database;
+    final syncedAt = DateTime.now().toUtc().toIso8601String();
+    await database.transaction((transaction) async {
+      await transaction.delete('donation_centres');
+      for (final centre in centres) {
+        await transaction.insert('donation_centres', {
+          ...centre.toMap(),
+          'synced_at': syncedAt,
+        });
+      }
+    });
+  }
+
   Future<List<DonationEvent>> getEvents() async {
     final database = await _appDatabase.database;
     final rows = await database.query(
@@ -118,5 +132,19 @@ class LocalDataRepository {
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> replaceEvents(Iterable<DonationEvent> events) async {
+    final database = await _appDatabase.database;
+    final syncedAt = DateTime.now().toUtc().toIso8601String();
+    await database.transaction((transaction) async {
+      await transaction.delete('donation_events');
+      for (final event in events) {
+        await transaction.insert('donation_events', {
+          ...event.toMap(),
+          'synced_at': syncedAt,
+        });
+      }
+    });
   }
 }

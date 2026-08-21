@@ -1,12 +1,35 @@
 import 'package:flutter/material.dart';
 
+import '../../data/remote/supabase_service.dart';
+import '../../widgets/notification_button.dart';
+import '../login_screen.dart';
+import 'manage_centres_screen.dart';
+import 'manage_events_screen.dart';
+
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Hospital Admin')),
+      appBar: AppBar(
+        title: const Text('Organisation Admin'),
+        actions: [
+          const NotificationButton(),
+          IconButton(
+            onPressed: () async {
+              await SupabaseService.client?.auth.signOut();
+              if (!context.mounted) return;
+              await Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -16,15 +39,15 @@ class AdminDashboardScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryCard(
-                  label: 'Active emergencies',
+                  label: 'Upcoming events',
                   value: '0',
-                  icon: Icons.emergency_outlined,
+                  icon: Icons.event_outlined,
                 ),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: _SummaryCard(
-                  label: 'Pending verification',
+                  label: 'Donor registrations',
                   value: '0',
                   icon: Icons.fact_check_outlined,
                 ),
@@ -33,15 +56,21 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.add_alert_outlined),
-            label: const Text('Create emergency request'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageEventsScreen()),
+            ),
+            icon: const Icon(Icons.event_outlined),
+            label: const Text('Manage donation events'),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.event_outlined),
-            label: const Text('Manage donation events'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageCentresScreen()),
+            ),
+            icon: const Icon(Icons.location_on_outlined),
+            label: const Text('Manage donation centres'),
           ),
         ],
       ),

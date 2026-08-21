@@ -4,9 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/remote/auth_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/user_role.dart';
-import 'admin/admin_dashboard_screen.dart';
-import 'donor/donor_shell.dart';
 import 'registration_screen.dart';
+import 'role_home.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,9 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
       if (!mounted) return;
-      final destination = role == UserRole.hospitalAdmin
-          ? const AdminDashboardScreen()
-          : const DonorShell();
+      final destination = homeForRole(role);
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => destination),

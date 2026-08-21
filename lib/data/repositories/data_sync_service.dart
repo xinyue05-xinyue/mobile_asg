@@ -28,7 +28,7 @@ class DataSyncService {
     if (remote != null) {
       try {
         final centres = await remote.getCentres();
-        await _localRepository.saveCentres(centres);
+        await _localRepository.replaceCentres(centres);
         await _preferences.setLastSyncAt(DateTime.now());
       } on Exception catch (error) {
         debugPrint('Centre sync failed; using cache: $error');
@@ -43,7 +43,7 @@ class DataSyncService {
     if (remote != null) {
       try {
         final events = await remote.getEvents();
-        await _localRepository.saveEvents(events);
+        await _localRepository.replaceEvents(events);
         await _preferences.setLastSyncAt(DateTime.now());
       } on Exception catch (error) {
         debugPrint('Event sync failed; using cache: $error');

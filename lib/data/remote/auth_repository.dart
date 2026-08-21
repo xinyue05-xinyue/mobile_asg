@@ -34,14 +34,19 @@ class AuthRepository {
     final user = response.user;
     if (user == null) throw const AuthException('Login failed.');
 
+    return getCurrentRole();
+  }
+
+  Future<UserRole> getCurrentRole() async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('No active session.');
+
     final profile = await client
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
-    return profile['role'] == UserRole.hospitalAdmin.databaseValue
-        ? UserRole.hospitalAdmin
-        : UserRole.donor;
+    return UserRole.fromDatabase(profile['role'] as String?);
   }
 
   Future<void> signOut() => client.auth.signOut();

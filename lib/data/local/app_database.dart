@@ -13,11 +13,12 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     _database = await openDatabase(
       path.join(databasePath, 'my_darah.db'),
-      version: 1,
+      version: 2,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _createSchema,
+      onUpgrade: _upgradeSchema,
     );
     return _database!;
   }
@@ -83,6 +84,28 @@ class AppDatabase {
         operation TEXT NOT NULL,
         payload TEXT NOT NULL,
         created_at TEXT NOT NULL
+      )
+    ''');
+
+    await _createGovernmentStats(database);
+  }
+
+  Future<void> _upgradeSchema(
+    Database database,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) await _createGovernmentStats(database);
+  }
+
+  Future<void> _createGovernmentStats(Database database) async {
+    await database.execute('''
+      CREATE TABLE IF NOT EXISTS government_donation_stats (
+        date TEXT NOT NULL,
+        blood_type TEXT NOT NULL,
+        donations INTEGER NOT NULL,
+        synced_at TEXT NOT NULL,
+        PRIMARY KEY (date, blood_type)
       )
     ''');
   }

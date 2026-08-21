@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/notification_button.dart';
+import 'donor/donor_emergency_screen.dart';
+
 class DonorHomeScreen extends StatelessWidget {
   const DonorHomeScreen({super.key});
 
@@ -8,12 +11,7 @@ class DonorHomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('MyDarah'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined),
-          ),
-        ],
+        actions: const [NotificationButton()],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -54,7 +52,7 @@ class DonorHomeScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 18),
                           Text(
-                            'Blood Type: O+',
+                            'Keep your donor profile updated',
                             style: TextStyle(color: Colors.white),
                           ),
                         ],
@@ -63,6 +61,26 @@ class DonorHomeScreen extends StatelessWidget {
                     Icon(Icons.bloodtype, size: 70, color: Colors.white),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DonorEmergencyScreen(),
+                  ),
+                ),
+                leading: const Icon(
+                  Icons.emergency_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text('Emergency blood requests'),
+                subtitle: const Text(
+                  'View active requests matching your profile',
+                ),
+                trailing: const Icon(Icons.chevron_right),
               ),
             ),
             const SizedBox(height: 20),
