@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/notification_button.dart';
 import 'donor/donor_emergency_screen.dart';
+import 'donor/centres_screen.dart';
 import 'statistics_screen.dart';
 
 class DonorHomeScreen extends StatelessWidget {
@@ -91,10 +92,17 @@ class DonorHomeScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              children: const [
-                HomeMenuItem(icon: Icons.location_on, title: 'Find Centre'),
-                HomeMenuItem(icon: Icons.event, title: 'Events'),
-                HomeMenuItem(icon: Icons.history, title: 'My Donations'),
+              children: [
+                HomeMenuItem(
+                  icon: Icons.location_on,
+                  title: 'Find Centre',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CentresScreen()),
+                  ),
+                ),
+                const HomeMenuItem(icon: Icons.event, title: 'Events'),
+                const HomeMenuItem(icon: Icons.history, title: 'My Donations'),
               ],
             ),
           ],
@@ -107,14 +115,20 @@ class DonorHomeScreen extends StatelessWidget {
 class HomeMenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
+  final VoidCallback? onTap;
 
-  const HomeMenuItem({super.key, required this.icon, required this.title});
+  const HomeMenuItem({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

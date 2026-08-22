@@ -40,4 +40,17 @@ class DonationCentre {
     operatingHours: map['operating_hours'] as String?,
     sourceId: map['source_id'] as String?,
   );
+
+  factory DonationCentre.fromOfficialMap(Map<String, Object?> map) {
+    final name = map['hospital']! as String;
+    return DonationCentre(
+      id: 'kkm-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}',
+      name: name,
+      address: 'Official BBISv2 blood collection facility',
+      state: map['state']! as String,
+      latitude: (map['lat']! as num).toDouble(),
+      longitude: (map['lon']! as num).toDouble(),
+      sourceId: name,
+    );
+  }
 }
