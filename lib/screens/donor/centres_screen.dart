@@ -161,11 +161,17 @@ class _GovernmentActivityCard extends StatelessWidget {
         .toList();
     final total = latest
         .where((stat) => stat.bloodType == 'all')
-        .map((stat) => stat.donations)
-        .firstOrNull;
-    final groups = latest
-        .where((stat) => stat.bloodType != 'all')
-        .map((stat) => '${stat.bloodType.toUpperCase()}: ${stat.donations}')
+        .fold<int>(0, (sum, stat) => sum + stat.donations);
+    final groupTotals = <String, int>{};
+    for (final stat in latest.where((stat) => stat.bloodType != 'all')) {
+      groupTotals.update(
+        stat.bloodType,
+        (value) => value + stat.donations,
+        ifAbsent: () => stat.donations,
+      );
+    }
+    final groups = groupTotals.entries
+        .map((entry) => '${entry.key.toUpperCase()}: ${entry.value}')
         .join('  •  ');
 
     return Card(
@@ -191,7 +197,7 @@ class _GovernmentActivityCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              total == null ? 'Latest available data' : '$total donations',
+              '$total donations',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             Text('Data date: ${dateLabel(latestDate)}'),

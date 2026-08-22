@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/remote/role_request_repository.dart';
@@ -18,6 +19,8 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
   final positionController = TextEditingController();
   final reasonController = TextEditingController();
   UserRole requestedRole = UserRole.admin;
+  final imagePicker = ImagePicker();
+  XFile? proofImage;
   bool isSubmitting = false;
 
   @override
@@ -34,16 +37,29 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
 
   Future<void> submit() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
+    final selectedProof = proofImage;
+    if (selectedProof == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload a proof image.')),
+      );
+      return;
+    }
     final client = SupabaseService.client;
     if (client == null) return;
 
     setState(() => isSubmitting = true);
     try {
+      final proofBytes = await selectedProof.readAsBytes();
+      if (proofBytes.lengthInBytes > 5 * 1024 * 1024) {
+        throw const FormatException('Proof image must be 5 MB or smaller.');
+      }
       await RoleRequestRepository(client).submit(
         requestedRole: requestedRole,
         organisationName: organisationController.text.trim(),
         staffPosition: positionController.text.trim(),
         reason: reasonController.text.trim(),
+        proofBytes: proofBytes,
+        proofFileName: selectedProof.name,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -55,9 +71,33 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+    } on StorageException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } on ArgumentError catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message?.toString() ?? 'Invalid image.')),
+      );
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }
+  }
+
+  Future<void> pickProofImage() async {
+    final image = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 2000,
+    );
+    if (image != null && mounted) setState(() => proofImage = image);
   }
 
   @override
@@ -104,6 +144,21 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
                 labelText: 'Reason for requesting access',
                 alignLabelWithHint: true,
               ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: isSubmitting ? null : pickProofImage,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(
+                proofImage == null
+                    ? 'Upload proof image'
+                    : 'Selected: ${proofImage!.name}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('JPG, PNG, or WebP. Maximum size 5 MB.'),
             ),
             const SizedBox(height: 24),
             ElevatedButton(

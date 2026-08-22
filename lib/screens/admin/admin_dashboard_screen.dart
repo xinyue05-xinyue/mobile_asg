@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../widgets/notification_button.dart';
 import '../login_screen.dart';
+import '../statistics_screen.dart';
 import 'manage_centres_screen.dart';
 import 'manage_events_screen.dart';
 
@@ -15,6 +16,7 @@ class AdminDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Organisation Admin'),
         actions: [
+          const StatisticsIconButton(),
           const NotificationButton(),
           IconButton(
             onPressed: () async {

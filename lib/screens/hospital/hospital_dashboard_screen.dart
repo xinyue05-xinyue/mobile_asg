@@ -5,6 +5,7 @@ import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_request.dart';
 import '../../widgets/notification_button.dart';
 import '../login_screen.dart';
+import '../statistics_screen.dart';
 import 'create_emergency_screen.dart';
 import 'emergency_responses_screen.dart';
 
@@ -87,6 +88,7 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
       appBar: AppBar(
         title: const Text('Hospital Portal'),
         actions: [
+          const StatisticsIconButton(),
           const NotificationButton(),
           IconButton(onPressed: signOut, icon: const Icon(Icons.logout)),
         ],

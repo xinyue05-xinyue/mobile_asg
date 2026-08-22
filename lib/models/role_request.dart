@@ -11,6 +11,7 @@ class RoleRequest {
     required this.createdAt,
     this.reason,
     this.rejectionReason,
+    this.proofPath,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class RoleRequest {
   final DateTime createdAt;
   final String? reason;
   final String? rejectionReason;
+  final String? proofPath;
 
   factory RoleRequest.fromMap(Map<String, Object?> map) => RoleRequest(
     id: map['id']! as String,
@@ -33,5 +35,6 @@ class RoleRequest {
     createdAt: DateTime.parse(map['created_at']! as String).toLocal(),
     reason: map['reason'] as String?,
     rejectionReason: map['rejection_reason'] as String?,
+    proofPath: map['proof_path'] as String?,
   );
 }

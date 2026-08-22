@@ -13,7 +13,7 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     _database = await openDatabase(
       path.join(databasePath, 'my_darah.db'),
-      version: 2,
+      version: 3,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -96,16 +96,21 @@ class AppDatabase {
     int newVersion,
   ) async {
     if (oldVersion < 2) await _createGovernmentStats(database);
+    if (oldVersion < 3) {
+      await database.execute('DROP TABLE IF EXISTS government_donation_stats');
+      await _createGovernmentStats(database);
+    }
   }
 
   Future<void> _createGovernmentStats(Database database) async {
     await database.execute('''
       CREATE TABLE IF NOT EXISTS government_donation_stats (
         date TEXT NOT NULL,
+        state TEXT NOT NULL,
         blood_type TEXT NOT NULL,
         donations INTEGER NOT NULL,
         synced_at TEXT NOT NULL,
-        PRIMARY KEY (date, blood_type)
+        PRIMARY KEY (date, state, blood_type)
       )
     ''');
   }

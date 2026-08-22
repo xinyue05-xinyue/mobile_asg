@@ -23,6 +23,11 @@ class DataSyncService {
   }
 
   Future<List<DonationCentre>> loadCentres() async {
+    if (kIsWeb) {
+      final remote = _remoteRepository;
+      return remote == null ? const [] : remote.getCentres();
+    }
+
     await _localRepository.ensureStarterData();
     final remote = _remoteRepository;
     if (remote != null) {
@@ -38,6 +43,11 @@ class DataSyncService {
   }
 
   Future<List<DonationEvent>> loadEvents() async {
+    if (kIsWeb) {
+      final remote = _remoteRepository;
+      return remote == null ? const [] : remote.getEvents();
+    }
+
     await _localRepository.ensureStarterData();
     final remote = _remoteRepository;
     if (remote != null) {

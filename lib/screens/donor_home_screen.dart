@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/notification_button.dart';
 import 'donor/donor_emergency_screen.dart';
+import 'statistics_screen.dart';
 
 class DonorHomeScreen extends StatelessWidget {
   const DonorHomeScreen({super.key});
@@ -11,7 +12,7 @@ class DonorHomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('MyDarah'),
-        actions: const [NotificationButton()],
+        actions: const [StatisticsIconButton(), NotificationButton()],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

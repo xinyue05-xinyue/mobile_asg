@@ -18,20 +18,22 @@ class GovernmentDataRepository {
   Future<List<GovernmentDonationStat>> loadRecentStats() async {
     try {
       final remote = await _fetchRemote();
-      await _replaceCache(remote);
+      if (!kIsWeb) await _replaceCache(remote);
       return remote;
     } on Exception catch (error) {
       debugPrint('Government data sync failed; using cache: $error');
+      if (kIsWeb) return const [];
       return _getCached();
     }
   }
 
   Future<List<GovernmentDonationStat>> _fetchRemote() async {
-    final startDate = DateTime.now().subtract(const Duration(days: 14));
+    final now = DateTime.now();
+    final startDate = DateTime(now.year, now.month);
     final start = startDate.toIso8601String().split('T').first;
     final uri = Uri.https('api.data.gov.my', '/data-catalogue', {
       'id': 'blood_donations',
-      'limit': '100',
+      'limit': '200',
       'date_start': '$start@date',
     });
     final response = await _client.get(uri);
@@ -67,7 +69,7 @@ class GovernmentDataRepository {
     final database = await _appDatabase.database;
     final rows = await database.query(
       'government_donation_stats',
-      orderBy: 'date DESC, blood_type',
+      orderBy: 'date DESC, state, blood_type',
     );
     return rows.map(GovernmentDonationStat.fromMap).toList();
   }
