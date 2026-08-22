@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/repositories/data_sync_service.dart';
@@ -19,11 +21,13 @@ class _CentresScreenState extends State<CentresScreen> {
   final searchController = TextEditingController();
   final syncService = DataSyncService();
   final governmentRepository = GovernmentDataRepository();
-  final officialRepository = const OfficialCentreRepository();
+  final officialRepository = OfficialCentreRepository();
   final mapController = MapController();
   final addressCache = <String, Future<String>>{};
   late Future<_CentreData> data;
   String query = '';
+  Position? userPosition;
+  bool locating = false;
 
   @override
   void initState() {
@@ -45,7 +49,8 @@ class _CentresScreenState extends State<CentresScreen> {
       _loadOfficialCentres(),
     ]);
     final managed = results[0] as List<DonationCentre>;
-    final official = results[2] as List<DonationCentre>;
+    final officialResult = results[2] as OfficialCentreResult;
+    final official = officialResult.centres;
     final byName = <String, DonationCentre>{
       for (final centre in official) centre.name.toLowerCase(): centre,
       for (final centre in managed) centre.name.toLowerCase(): centre,
@@ -54,16 +59,12 @@ class _CentresScreenState extends State<CentresScreen> {
       byName.values.toList()..sort((a, b) => a.name.compareTo(b.name)),
       results[1] as List<GovernmentDonationStat>,
       official.isNotEmpty,
+      officialResult.isFromCache && official.isNotEmpty,
     );
   }
 
-  Future<List<DonationCentre>> _loadOfficialCentres() async {
-    try {
-      return await officialRepository.getCentres();
-    } on Exception catch (error) {
-      debugPrint('Official centre sync failed: $error');
-      return const [];
-    }
+  Future<OfficialCentreResult> _loadOfficialCentres() {
+    return officialRepository.loadCentres();
   }
 
   void showCentre(DonationCentre centre) {
@@ -75,18 +76,30 @@ class _CentresScreenState extends State<CentresScreen> {
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: FutureBuilder<String>(
           future: _addressFor(centre),
-          builder: (context, snapshot) => ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.local_hospital_outlined),
-            title: Text(centre.name),
-            subtitle: Text(
-              snapshot.connectionState != ConnectionState.done
-                  ? 'Finding address…\n${centre.state}'
-                  : snapshot.hasData
-                  ? '${snapshot.data}\n${centre.state}'
-                  : 'Address unavailable\n${centre.state}',
-            ),
-            isThreeLine: true,
+          builder: (context, snapshot) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.local_hospital_outlined),
+                title: Text(centre.name),
+                subtitle: Text(
+                  snapshot.connectionState != ConnectionState.done
+                      ? 'Finding address…\n${centre.state}'
+                      : '${snapshot.data ?? centre.address}\n${centre.state}'
+                            '${distanceLabel(centre) == null ? '' : '\n${distanceLabel(centre)} away'}',
+                ),
+                isThreeLine: true,
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => openDirections(centre),
+                  icon: const Icon(Icons.directions_outlined),
+                  label: const Text('Open directions'),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -103,12 +116,113 @@ class _CentresScreenState extends State<CentresScreen> {
 
   List<DonationCentre> filteredCentres(List<DonationCentre> centres) {
     final search = query.trim().toLowerCase();
-    if (search.isEmpty) return centres;
-    return centres.where((centre) {
-      return centre.name.toLowerCase().contains(search) ||
-          centre.address.toLowerCase().contains(search) ||
-          centre.state.toLowerCase().contains(search);
-    }).toList();
+    final matches =
+        (search.isEmpty
+                ? centres
+                : centres.where((centre) {
+                    return centre.name.toLowerCase().contains(search) ||
+                        centre.address.toLowerCase().contains(search) ||
+                        centre.state.toLowerCase().contains(search);
+                  }))
+            .toList();
+    if (userPosition != null) {
+      matches.sort(
+        (first, second) => distanceTo(first).compareTo(distanceTo(second)),
+      );
+    }
+    return matches;
+  }
+
+  double distanceTo(DonationCentre centre) {
+    final position = userPosition;
+    if (position == null) return double.infinity;
+    return Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          centre.latitude,
+          centre.longitude,
+        ) /
+        1000;
+  }
+
+  String? distanceLabel(DonationCentre centre) {
+    if (userPosition == null) return null;
+    final distance = distanceTo(centre);
+    return distance < 1
+        ? '${(distance * 1000).round()} m'
+        : '${distance.toStringAsFixed(1)} km';
+  }
+
+  Future<void> findNearest() async {
+    if (locating) return;
+    setState(() => locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const LocationServiceDisabledException();
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Location permission is required to find nearby centres.',
+            ),
+            action: permission == LocationPermission.deniedForever
+                ? SnackBarAction(
+                    label: 'Settings',
+                    onPressed: Geolocator.openAppSettings,
+                  )
+                : null,
+          ),
+        );
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      setState(() => userPosition = position);
+      mapController.move(LatLng(position.latitude, position.longitude), 10);
+    } on LocationServiceDisabledException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Turn on device location and try again.'),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: Geolocator.openLocationSettings,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to get your location: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
+  }
+
+  Future<void> openDirections(DonationCentre centre) async {
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': '${centre.latitude},${centre.longitude}',
+    });
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open map directions.')),
+      );
+    }
   }
 
   @override
@@ -126,7 +240,8 @@ class _CentresScreenState extends State<CentresScreen> {
               child: Text('Unable to load data: ${snapshot.error}'),
             );
           }
-          final value = snapshot.data ?? const _CentreData([], [], false);
+          final value =
+              snapshot.data ?? const _CentreData([], [], false, false);
           final centres = filteredCentres(value.centres);
           return RefreshIndicator(
             onRefresh: () async => setState(() {
@@ -148,6 +263,17 @@ class _CentresScreenState extends State<CentresScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                ] else if (value.officialFromCache) ...[
+                  const Card(
+                    child: ListTile(
+                      leading: Icon(Icons.offline_pin_outlined),
+                      title: Text('Showing cached official facilities'),
+                      subtitle: Text(
+                        'Connect to the internet and pull down to check for updates.',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
                 TextField(
                   controller: searchController,
@@ -155,6 +281,21 @@ class _CentresScreenState extends State<CentresScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Search centres by name, address or state',
                     prefixIcon: Icon(Icons.search),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: locating ? null : findNearest,
+                  icon: locating
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location),
+                  label: Text(
+                    userPosition == null
+                        ? 'Find centres near me'
+                        : 'Centres sorted by nearest',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -176,28 +317,42 @@ class _CentresScreenState extends State<CentresScreen> {
                             userAgentPackageName: 'com.example.mobile_asg',
                           ),
                           MarkerLayer(
-                            markers: centres
-                                .map(
-                                  (centre) => Marker(
-                                    point: LatLng(
-                                      centre.latitude,
-                                      centre.longitude,
-                                    ),
-                                    width: 46,
-                                    height: 46,
-                                    child: GestureDetector(
-                                      onTap: () => showCentre(centre),
-                                      child: Icon(
-                                        Icons.location_on,
-                                        size: 42,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
+                            markers: [
+                              ...centres.map(
+                                (centre) => Marker(
+                                  point: LatLng(
+                                    centre.latitude,
+                                    centre.longitude,
+                                  ),
+                                  width: 46,
+                                  height: 46,
+                                  child: GestureDetector(
+                                    onTap: () => showCentre(centre),
+                                    child: Icon(
+                                      Icons.location_on,
+                                      size: 42,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              ),
+                              if (userPosition case final position?)
+                                Marker(
+                                  point: LatLng(
+                                    position.latitude,
+                                    position.longitude,
+                                  ),
+                                  width: 44,
+                                  height: 44,
+                                  child: const Icon(
+                                    Icons.my_location,
+                                    size: 34,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                            ],
                           ),
                           const RichAttributionWidget(
                             attributions: [
@@ -236,7 +391,8 @@ class _CentresScreenState extends State<CentresScreen> {
                         title: Text(centre.name),
                         subtitle: Text(
                           '${centre.address}\n${centre.state}'
-                          '${centre.operatingHours == null ? '' : '\n${centre.operatingHours}'}',
+                          '${centre.operatingHours == null ? '' : '\n${centre.operatingHours}'}'
+                          '${distanceLabel(centre) == null ? '' : '\n${distanceLabel(centre)} away'}',
                         ),
                         isThreeLine: true,
                       ),
@@ -341,9 +497,15 @@ class _GovernmentActivityCard extends StatelessWidget {
 }
 
 class _CentreData {
-  const _CentreData(this.centres, this.stats, this.officialAvailable);
+  const _CentreData(
+    this.centres,
+    this.stats,
+    this.officialAvailable,
+    this.officialFromCache,
+  );
 
   final List<DonationCentre> centres;
   final List<GovernmentDonationStat> stats;
   final bool officialAvailable;
+  final bool officialFromCache;
 }

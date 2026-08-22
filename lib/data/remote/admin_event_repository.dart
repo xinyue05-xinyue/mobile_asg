@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
 
 import '../../models/donation_event.dart';
 
@@ -24,6 +25,9 @@ class AdminEventRepository {
     required DateTime startsAt,
     required DateTime endsAt,
     required String description,
+    required double? latitude,
+    required double? longitude,
+    required String? imagePath,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');
@@ -35,6 +39,9 @@ class AdminEventRepository {
       'description': description.isEmpty ? null : description,
       'status': 'upcoming',
       'created_by': user.id,
+      'latitude': latitude,
+      'longitude': longitude,
+      'image_path': imagePath,
     });
   }
 
@@ -45,6 +52,9 @@ class AdminEventRepository {
     required DateTime startsAt,
     required DateTime endsAt,
     required String description,
+    required double? latitude,
+    required double? longitude,
+    required String? imagePath,
   }) async {
     await client
         .from('donation_events')
@@ -55,8 +65,36 @@ class AdminEventRepository {
           'ends_at': endsAt.toUtc().toIso8601String(),
           'description': description.isEmpty ? null : description,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
+          'latitude': latitude,
+          'longitude': longitude,
+          'image_path': imagePath,
         })
         .eq('id', id);
+  }
+
+  Future<String> uploadImage({
+    required Uint8List bytes,
+    required String extension,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    final path =
+        '${user.id}/${DateTime.now().microsecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('event-images')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: false,
+            contentType: switch (extension.toLowerCase()) {
+              'png' => 'image/png',
+              'webp' => 'image/webp',
+              _ => 'image/jpeg',
+            },
+          ),
+        );
+    return path;
   }
 
   Future<void> cancel(String id) async {

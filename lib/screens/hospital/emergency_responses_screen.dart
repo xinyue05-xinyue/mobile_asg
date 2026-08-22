@@ -89,6 +89,58 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
     }
   }
 
+  String dateLabel(DateTime? value) {
+    if (value == null) return 'Eligible now';
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    return '$day/$month/${value.year}';
+  }
+
+  Future<void> showDonor(EmergencyResponse response) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(radius: 34, child: Text(response.bloodType ?? '?')),
+              const SizedBox(height: 12),
+              Text(
+                response.donorName,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.bloodtype_outlined),
+                title: const Text('Blood type'),
+                subtitle: Text(response.bloodType ?? 'Not set'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone_outlined),
+                title: const Text('Contact phone'),
+                subtitle: Text(response.phone ?? 'Not set'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.event_available_outlined),
+                title: const Text('Donation eligibility'),
+                subtitle: Text(dateLabel(response.nextEligibleDate)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.fact_check_outlined),
+                title: const Text('Response status'),
+                subtitle: Text(response.status.toUpperCase()),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,6 +172,7 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
                 final response = items[index];
                 return Card(
                   child: ListTile(
+                    onTap: () => showDonor(response),
                     contentPadding: const EdgeInsets.all(16),
                     leading: CircleAvatar(
                       child: Text(response.bloodType ?? '?'),

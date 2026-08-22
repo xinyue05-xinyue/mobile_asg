@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/donation_centre.dart';
 import '../../models/donation_event.dart';
 import '../local/preferences_service.dart';
+import '../local/platform_support.dart';
 import '../remote/remote_data_repository.dart';
 import '../remote/supabase_service.dart';
 import 'local_data_repository.dart';
@@ -23,7 +24,7 @@ class DataSyncService {
   }
 
   Future<List<DonationCentre>> loadCentres() async {
-    if (kIsWeb) {
+    if (!supportsMobileSqlite) {
       final remote = _remoteRepository;
       return remote == null ? const [] : remote.getCentres();
     }
@@ -43,7 +44,7 @@ class DataSyncService {
   }
 
   Future<List<DonationEvent>> loadEvents() async {
-    if (kIsWeb) {
+    if (!supportsMobileSqlite) {
       final remote = _remoteRepository;
       return remote == null ? const [] : remote.getEvents();
     }

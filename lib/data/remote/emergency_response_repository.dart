@@ -32,7 +32,8 @@ class EmergencyResponseRepository {
         .from('emergency_responses')
         .select(
           'id, request_id, donor_id, status, created_at, '
-          'donor:profiles!emergency_responses_donor_id_fkey(full_name, blood_type)',
+          'donor:profiles!emergency_responses_donor_id_fkey('
+          'full_name, blood_type, phone, next_eligible_date)',
         )
         .eq('request_id', requestId)
         .order('created_at');

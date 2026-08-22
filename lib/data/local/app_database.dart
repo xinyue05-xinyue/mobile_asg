@@ -13,7 +13,7 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     _database = await openDatabase(
       path.join(databasePath, 'my_darah.db'),
-      version: 3,
+      version: 5,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -47,6 +47,9 @@ class AppDatabase {
         ends_at TEXT NOT NULL,
         status TEXT NOT NULL,
         description TEXT,
+        latitude REAL,
+        longitude REAL,
+        image_path TEXT,
         synced_at TEXT NOT NULL
       )
     ''');
@@ -88,6 +91,7 @@ class AppDatabase {
     ''');
 
     await _createGovernmentStats(database);
+    await _createOfficialCentres(database);
   }
 
   Future<void> _upgradeSchema(
@@ -100,6 +104,18 @@ class AppDatabase {
       await database.execute('DROP TABLE IF EXISTS government_donation_stats');
       await _createGovernmentStats(database);
     }
+    if (oldVersion < 4) await _createOfficialCentres(database);
+    if (oldVersion < 5) {
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN latitude REAL',
+      );
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN longitude REAL',
+      );
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN image_path TEXT',
+      );
+    }
   }
 
   Future<void> _createGovernmentStats(Database database) async {
@@ -111,6 +127,22 @@ class AppDatabase {
         donations INTEGER NOT NULL,
         synced_at TEXT NOT NULL,
         PRIMARY KEY (date, state, blood_type)
+      )
+    ''');
+  }
+
+  Future<void> _createOfficialCentres(Database database) async {
+    await database.execute('''
+      CREATE TABLE IF NOT EXISTS official_donation_centres (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL,
+        state TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        operating_hours TEXT,
+        source_id TEXT,
+        synced_at TEXT NOT NULL
       )
     ''');
   }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'dart:async';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/remote/admin_centre_repository.dart';
+import '../../data/remote/official_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_centre.dart';
 
@@ -24,6 +27,10 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
   late final TextEditingController longitudeController;
   late final TextEditingController hoursController;
   bool isSaving = false;
+  LatLng? selectedLocation;
+  final mapController = MapController();
+  bool searchingLocation = false;
+  Timer? addressDebounce;
 
   @override
   void initState() {
@@ -39,6 +46,17 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
       text: centre?.longitude.toString(),
     );
     hoursController = TextEditingController(text: centre?.operatingHours);
+    if (centre != null) {
+      selectedLocation = LatLng(centre.latitude, centre.longitude);
+    }
+  }
+
+  void selectLocation(LatLng point) {
+    setState(() {
+      selectedLocation = point;
+      latitudeController.text = point.latitude.toStringAsFixed(6);
+      longitudeController.text = point.longitude.toStringAsFixed(6);
+    });
   }
 
   @override
@@ -49,23 +67,62 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
     latitudeController.dispose();
     longitudeController.dispose();
     hoursController.dispose();
+    mapController.dispose();
+    addressDebounce?.cancel();
     super.dispose();
+  }
+
+  void addressChanged(String value) {
+    addressDebounce?.cancel();
+    if (value.trim().length < 5) return;
+    addressDebounce = Timer(const Duration(milliseconds: 900), findAddress);
+  }
+
+  Future<void> findAddress() async {
+    final query = [
+      nameController.text.trim(),
+      addressController.text.trim(),
+      stateController.text.trim(),
+    ].where((value) => value.isNotEmpty).join(', ');
+    if (query.length < 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the centre address first.')),
+      );
+      return;
+    }
+    setState(() => searchingLocation = true);
+    try {
+      final result = await OfficialCentreRepository().searchLocation(query);
+      if (!mounted) return;
+      final point = LatLng(result.latitude, result.longitude);
+      selectLocation(point);
+      mapController.move(point, 16);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to find location: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => searchingLocation = false);
+    }
   }
 
   String? requiredValue(String? value) {
     return value == null || value.trim().isEmpty ? 'Required field.' : null;
   }
 
-  String? coordinate(String? value, double min, double max) {
-    final number = double.tryParse(value ?? '');
-    if (number == null || number < min || number > max) {
-      return 'Enter a value from $min to $max.';
-    }
-    return null;
-  }
-
   Future<void> save() async {
     if (!(formKey.currentState?.validate() ?? false)) return;
+    if (selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Enter a valid address and wait for the map to update.',
+          ),
+        ),
+      );
+      return;
+    }
     final client = SupabaseService.client;
     if (client == null) return;
     setState(() => isSaving = true);
@@ -113,9 +170,6 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final decimalFormatter = FilteringTextInputFormatter.allow(
-      RegExp(r'^-?\d*\.?\d*'),
-    );
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.centre == null ? 'Add centre' : 'Edit centre'),
@@ -134,32 +188,83 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
               controller: addressController,
               label: 'Address',
               validator: requiredValue,
+              onChanged: addressChanged,
+              onSubmitted: (_) => findAddress(),
             ),
             _TextField(
               controller: stateController,
               label: 'State',
               validator: requiredValue,
             ),
-            _TextField(
-              controller: latitudeController,
-              label: 'Latitude',
-              validator: (value) => coordinate(value, -90, 90),
-              keyboardType: const TextInputType.numberWithOptions(
-                signed: true,
-                decimal: true,
-              ),
-              inputFormatters: [decimalFormatter],
+            Text(
+              'Centre location',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            _TextField(
-              controller: longitudeController,
-              label: 'Longitude',
-              validator: (value) => coordinate(value, -180, 180),
-              keyboardType: const TextInputType.numberWithOptions(
-                signed: true,
-                decimal: true,
-              ),
-              inputFormatters: [decimalFormatter],
+            const SizedBox(height: 4),
+            const Text(
+              'Enter the address above. The map updates automatically; tap the '
+              'map only if the entrance needs a small adjustment.',
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (searchingLocation)
+                  const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(Icons.location_searching, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  searchingLocation ? 'Locating address…' : 'Address location',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 280,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: FlutterMap(
+                  mapController: mapController,
+                  options: MapOptions(
+                    initialCenter:
+                        selectedLocation ?? const LatLng(3.139, 101.6869),
+                    initialZoom: selectedLocation == null ? 11 : 15,
+                    onTap: (_, point) => selectLocation(point),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.mobile_asg',
+                    ),
+                    if (selectedLocation case final point?)
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: point,
+                            width: 48,
+                            height: 48,
+                            child: const Icon(
+                              Icons.location_on,
+                              size: 46,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const RichAttributionWidget(
+                      attributions: [
+                        TextSourceAttribution('OpenStreetMap contributors'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             _TextField(controller: hoursController, label: 'Operating hours'),
             const SizedBox(height: 8),
             ElevatedButton(
@@ -183,15 +288,15 @@ class _TextField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.validator,
-    this.keyboardType,
-    this.inputFormatters,
+    this.onChanged,
+    this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String label;
   final String? Function(String?)? validator;
-  final TextInputType? keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -200,8 +305,8 @@ class _TextField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         validator: validator,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
+        onChanged: onChanged,
+        onFieldSubmitted: onSubmitted,
         decoration: InputDecoration(labelText: label),
       ),
     );

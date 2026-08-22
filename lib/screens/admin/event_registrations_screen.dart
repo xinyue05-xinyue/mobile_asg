@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_event.dart';
 import '../../models/event_registration.dart';
+import 'qr_attendance_scanner_screen.dart';
 
 class EventRegistrationsScreen extends StatefulWidget {
   const EventRegistrationsScreen({super.key, required this.event});
@@ -32,6 +34,12 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
   }
 
   Future<void> verify(EventRegistration registration) async {
+    if (!canVerify) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(verificationMessage)));
+      return;
+    }
     final today = DateTime.now();
     final nextDate = await showDatePicker(
       context: context,
@@ -79,20 +87,71 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
       setState(() {
         registrations = loadRegistrations();
       });
-    } catch (error) {
+    } on PostgrestException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to verify attendance: $error')),
+        SnackBar(content: Text(_friendlyVerificationError(error.message))),
       );
     } finally {
       if (mounted) setState(() => verifyingId = null);
     }
   }
 
+  bool get canVerify =>
+      widget.event.status != 'cancelled' &&
+      !widget.event.startsAt.isAfter(DateTime.now());
+
+  String get verificationMessage {
+    if (widget.event.status == 'cancelled') {
+      return 'Attendance cannot be verified for a cancelled event.';
+    }
+    return 'Attendance can only be verified after the event starts.';
+  }
+
+  String _friendlyVerificationError(String message) {
+    if (message.contains('not available for attendance')) {
+      return verificationMessage;
+    }
+    if (message.contains('not currently eligible')) {
+      return 'This donor is not currently eligible to donate.';
+    }
+    if (message.contains('Active registration not found')) {
+      return 'This registration has already been processed.';
+    }
+    return 'Unable to verify attendance. Please try again.';
+  }
+
+  Future<void> scanAttendance() async {
+    if (!canVerify) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(verificationMessage)));
+      return;
+    }
+    final verified = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QrAttendanceScannerScreen(eventId: widget.event.id),
+      ),
+    );
+    if (verified == true && mounted) {
+      setState(() => registrations = loadRegistrations());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.event.title)),
+      appBar: AppBar(
+        title: Text(widget.event.title),
+        actions: [
+          IconButton(
+            onPressed: canVerify ? scanAttendance : null,
+            tooltip: 'Scan attendance QR',
+            icon: const Icon(Icons.qr_code_scanner),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<EventRegistration>>(
         future: registrations,
         builder: (context, snapshot) {
@@ -110,10 +169,22 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: items.length,
+            itemCount: items.length + (canVerify ? 0 : 1),
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final registration = items[index];
+              if (!canVerify && index == 0) {
+                return Card(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  child: ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: Text(verificationMessage),
+                    subtitle: Text(
+                      'Event starts: ${widget.event.startsAt.toString().substring(0, 16)}',
+                    ),
+                  ),
+                );
+              }
+              final registration = items[index - (canVerify ? 0 : 1)];
               return Card(
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
@@ -125,7 +196,7 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
                   trailing: registration.status != 'registered'
                       ? const Icon(Icons.verified, color: Colors.green)
                       : FilledButton(
-                          onPressed: verifyingId == null
+                          onPressed: canVerify && verifyingId == null
                               ? () => verify(registration)
                               : null,
                           child: verifyingId == registration.id

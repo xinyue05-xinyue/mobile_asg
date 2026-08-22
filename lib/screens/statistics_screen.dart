@@ -13,23 +13,77 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   final repository = GovernmentDataRepository();
   late Future<List<GovernmentDonationStat>> stats;
+  DateTime selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
   @override
   void initState() {
     super.initState();
-    stats = repository.loadRecentStats();
+    stats = repository.loadStatsForMonth(selectedMonth);
   }
 
   Future<void> refresh() async {
-    final refreshed = repository.loadRecentStats();
-    setState(() => stats = refreshed);
+    final refreshed = repository.loadStatsForMonth(selectedMonth);
+    setState(() {
+      stats = refreshed;
+    });
     await refreshed;
+  }
+
+  Future<void> chooseMonth() async {
+    final now = DateTime.now();
+    final months = List.generate(
+      24,
+      (index) => DateTime(now.year, now.month - index),
+    );
+    final selected = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+              child: Text(
+                'Choose statistics month',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            ...months.map(
+              (month) => ListTile(
+                leading: Icon(
+                  month.year == selectedMonth.year &&
+                          month.month == selectedMonth.month
+                      ? Icons.check_circle
+                      : Icons.calendar_month_outlined,
+                ),
+                title: Text(_monthLabel(month)),
+                onTap: () => Navigator.pop(context, month),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      selectedMonth = selected;
+      stats = repository.loadStatsForMonth(selectedMonth);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donation Statistics')),
+      appBar: AppBar(
+        title: const Text('Donation Statistics'),
+        actions: [
+          IconButton(
+            onPressed: chooseMonth,
+            tooltip: 'Choose month',
+            icon: const Icon(Icons.calendar_month_outlined),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<GovernmentDonationStat>>(
         future: stats,
         builder: (context, snapshot) {
@@ -101,6 +155,21 @@ class _MonthlyOverview extends StatelessWidget {
       (value, row) => row.value > value ? row.value : value,
     );
     final latestDate = dayTotals.last.key;
+    final average = dayTotals.isEmpty ? 0 : monthlyTotal / dayTotals.length;
+    final peak = dayTotals.reduce(
+      (current, row) => row.value > current.value ? row : current,
+    );
+    const bloodTypes = ['a', 'b', 'ab', 'o'];
+    final monthlyBloodTotals = {
+      for (final type in bloodTypes)
+        type: stats
+            .where((stat) => stat.bloodType.toLowerCase() == type)
+            .fold<int>(0, (sum, stat) => sum + stat.donations),
+    };
+    final bloodMaximum = monthlyBloodTotals.values.fold<int>(
+      0,
+      (current, value) => value > current ? value : current,
+    );
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -114,6 +183,41 @@ class _MonthlyOverview extends StatelessWidget {
               subtitle: Text(
                 '${_monthLabel(latestDate)} • Latest data: ${_dateLabel(latestDate)}',
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _InsightCard(
+                  icon: Icons.show_chart,
+                  value: average.toStringAsFixed(0),
+                  label: 'Average per day',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InsightCard(
+                  icon: Icons.trending_up,
+                  value: '${peak.value}',
+                  label: 'Peak · ${_shortDateLabel(peak.key)}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Monthly blood-group contribution',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 4),
+          const Text('Totals recorded in the official dataset this month.'),
+          const SizedBox(height: 8),
+          ...bloodTypes.map(
+            (type) => _BarRow(
+              label: type.toUpperCase(),
+              value: monthlyBloodTotals[type]!,
+              maximum: bloodMaximum,
             ),
           ),
           const SizedBox(height: 16),
@@ -146,6 +250,36 @@ class _MonthlyOverview extends StatelessWidget {
             style: TextStyle(fontSize: 12),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(value, style: Theme.of(context).textTheme.titleLarge),
+            Text(label, maxLines: 2),
+          ],
+        ),
       ),
     );
   }

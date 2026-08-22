@@ -7,6 +7,9 @@ class DonationEvent {
     required this.endsAt,
     required this.status,
     this.description,
+    this.latitude,
+    this.longitude,
+    this.imagePath,
   });
 
   final String id;
@@ -16,6 +19,9 @@ class DonationEvent {
   final DateTime endsAt;
   final String status;
   final String? description;
+  final double? latitude;
+  final double? longitude;
+  final String? imagePath;
 
   Map<String, Object?> toMap() => {
     'id': id,
@@ -25,6 +31,9 @@ class DonationEvent {
     'ends_at': endsAt.toUtc().toIso8601String(),
     'status': status,
     'description': description,
+    'latitude': latitude,
+    'longitude': longitude,
+    'image_path': imagePath,
   };
 
   factory DonationEvent.fromMap(Map<String, Object?> map) => DonationEvent(
@@ -35,5 +44,8 @@ class DonationEvent {
     endsAt: DateTime.parse(map['ends_at']! as String).toLocal(),
     status: map['status']! as String,
     description: map['description'] as String?,
+    latitude: (map['latitude'] as num?)?.toDouble(),
+    longitude: (map['longitude'] as num?)?.toDouble(),
+    imagePath: map['image_path'] as String?,
   );
 }

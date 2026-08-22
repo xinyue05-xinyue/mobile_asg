@@ -12,6 +12,8 @@ class RoleRequest {
     this.reason,
     this.rejectionReason,
     this.proofPath,
+    this.proofPaths = const [],
+    this.proofNames = const [],
   });
 
   final String id;
@@ -24,6 +26,8 @@ class RoleRequest {
   final String? reason;
   final String? rejectionReason;
   final String? proofPath;
+  final List<String> proofPaths;
+  final List<String> proofNames;
 
   factory RoleRequest.fromMap(Map<String, Object?> map) => RoleRequest(
     id: map['id']! as String,
@@ -36,5 +40,24 @@ class RoleRequest {
     reason: map['reason'] as String?,
     rejectionReason: map['rejection_reason'] as String?,
     proofPath: map['proof_path'] as String?,
+    proofPaths: _stringList(map['proof_paths'], map['proof_path'] as String?),
+    proofNames: _stringList(map['proof_names'], null),
   );
+
+  String proofNameAt(int index) {
+    if (index < proofNames.length && proofNames[index].isNotEmpty) {
+      return proofNames[index];
+    }
+    return 'Supporting document ${index + 1}';
+  }
+}
+
+List<String> _stringList(Object? value, String? fallback) {
+  final items = value is List
+      ? value.whereType<String>().where((item) => item.isNotEmpty).toList()
+      : <String>[];
+  if (items.isEmpty && fallback != null && fallback.isNotEmpty) {
+    return [fallback];
+  }
+  return items;
 }

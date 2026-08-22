@@ -48,6 +48,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return 'New Donor';
   }
 
+  int? nextRewardTarget(int points) {
+    if (points < 100) return 100;
+    if (points < 500) return 500;
+    if (points < 1000) return 1000;
+    return null;
+  }
+
   Future<void> editProfile(ProfileOverview value) async {
     final updated = await Navigator.push<bool>(
       context,
@@ -183,14 +190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.emoji_events_outlined),
-                        title: Text(rewardLevel(value.rewardPoints)),
-                        subtitle: const Text(
-                          'Verified emergency donations earn 100 points.',
-                        ),
-                      ),
+                    _RewardProgressCard(
+                      points: value.rewardPoints,
+                      level: rewardLevel(value.rewardPoints),
+                      nextTarget: nextRewardTarget(value.rewardPoints),
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -319,6 +322,98 @@ class _MetricCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RewardProgressCard extends StatelessWidget {
+  const _RewardProgressCard({
+    required this.points,
+    required this.level,
+    required this.nextTarget,
+  });
+
+  final int points;
+  final String level;
+  final int? nextTarget;
+
+  double get progress {
+    final target = nextTarget;
+    if (target == null) return 1;
+    return target == 0 ? 1 : (points / target).clamp(0, 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final target = nextTarget;
+    final remaining = target == null ? 0 : target - points;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.emoji_events_outlined, size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        level,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text('$points total points'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(value: progress, minHeight: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              target == null
+                  ? 'Highest recognition level reached.'
+                  : '$remaining more points to ${_levelAt(target)}.',
+            ),
+            const SizedBox(height: 14),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              'Level benefits',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Levels are recognition badges for verified donations. Every verified '
+              'event or emergency donation earns 100 points. Redeemable vouchers or '
+              'cash rewards are not currently included.',
+            ),
+            const SizedBox(height: 10),
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                Chip(label: Text('Bronze · 100')),
+                Chip(label: Text('Silver · 500')),
+                Chip(label: Text('Gold · 1,000')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _levelAt(int target) => switch (target) {
+    100 => 'Bronze Donor',
+    500 => 'Silver Donor',
+    _ => 'Gold Donor',
+  };
 }
 
 class _RoleRequests extends StatelessWidget {

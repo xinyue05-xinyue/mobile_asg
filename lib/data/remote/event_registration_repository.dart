@@ -8,14 +8,23 @@ class EventRegistrationRepository {
   final SupabaseClient client;
 
   Future<Set<String>> getMyRegisteredEventIds() async {
+    return (await getMyRegistrationStatuses()).entries
+        .where((entry) => entry.value == 'registered')
+        .map((entry) => entry.key)
+        .toSet();
+  }
+
+  Future<Map<String, String>> getMyRegistrationStatuses() async {
     final user = client.auth.currentUser;
     if (user == null) return const {};
     final rows = await client
         .from('event_registrations')
-        .select('event_id')
-        .eq('donor_id', user.id)
-        .eq('status', 'registered');
-    return rows.map((row) => row['event_id']! as String).toSet();
+        .select('event_id, status')
+        .eq('donor_id', user.id);
+    return {
+      for (final row in rows)
+        row['event_id']! as String: row['status']! as String,
+    };
   }
 
   Future<void> register(String eventId) async {
@@ -52,6 +61,16 @@ class EventRegistrationRepository {
             .split('T')
             .first,
       },
+    );
+  }
+
+  Future<void> verifyQr({
+    required String eventId,
+    required String donorId,
+  }) async {
+    await client.rpc(
+      'verify_event_qr',
+      params: {'p_event_id': eventId, 'p_donor_id': donorId},
     );
   }
 }

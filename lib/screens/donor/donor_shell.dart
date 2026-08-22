@@ -14,13 +14,22 @@ class DonorShell extends StatefulWidget {
 
 class _DonorShellState extends State<DonorShell> {
   int currentIndex = 0;
+  late final List<Widget> pages;
 
-  static const pages = <Widget>[
-    DonorHomeScreen(),
-    CentresScreen(),
-    EventsScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    pages = [
+      DonorHomeScreen(onTabSelected: selectTab),
+      const CentresScreen(),
+      const EventsScreen(),
+      const ProfileScreen(),
+    ];
+  }
+
+  void selectTab(int index) {
+    setState(() => currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +37,7 @@ class _DonorShellState extends State<DonorShell> {
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
-        onDestinationSelected: (index) => setState(() => currentIndex = index),
+        onDestinationSelected: selectTab,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

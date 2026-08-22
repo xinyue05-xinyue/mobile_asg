@@ -10,6 +10,17 @@ class ProfileRepository {
 
   final SupabaseClient client;
 
+  Future<DonorProfile> getCurrentProfile() async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    final row = await client
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .single();
+    return DonorProfile.fromMap(row);
+  }
+
   Future<ProfileOverview> getOverview() async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');
@@ -69,6 +80,21 @@ class ProfileRepository {
           'phone': phone.isEmpty ? null : phone,
           'date_of_birth': dateOfBirth?.toIso8601String().split('T').first,
           'notifications_enabled': notificationsEnabled,
+        })
+        .eq('id', user.id);
+  }
+
+  Future<void> updateBasicProfile({
+    required String fullName,
+    required String phone,
+  }) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    await client
+        .from('profiles')
+        .update({
+          'full_name': fullName,
+          'phone': phone.trim().isEmpty ? null : phone.trim(),
         })
         .eq('id', user.id);
   }
