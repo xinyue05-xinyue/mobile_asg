@@ -38,18 +38,23 @@ class _EventsScreenState extends State<EventsScreen> {
 
   Future<_EventData> loadData() async {
     final events = await syncService.loadEvents();
-    final upcoming = events
-        .where(
-          (event) =>
-              event.status == 'upcoming' &&
-              event.startsAt.isAfter(DateTime.now()),
-        )
-        .toList();
     final client = SupabaseService.client;
     final registrationStatuses = client == null
         ? <String, String>{}
         : await EventRegistrationRepository(client).getMyRegistrationStatuses();
-    return _EventData(upcoming, registrationStatuses);
+    final now = DateTime.now();
+    final visibleEvents = events.where((event) {
+      if (event.status != 'upcoming') return false;
+      if (event.startsAt.isAfter(now)) return true;
+
+      // Keep a registered event accessible while it is running and for one
+      // day afterwards, so the donor can show the attendance QR after giving
+      // blood. Past events are never offered for new registration.
+      final registrationStatus = registrationStatuses[event.id];
+      return registrationStatus == 'registered' &&
+          event.endsAt.add(const Duration(days: 1)).isAfter(now);
+    }).toList();
+    return _EventData(visibleEvents, registrationStatuses);
   }
 
   String dateLabel(DateTime value) {
@@ -78,7 +83,7 @@ class _EventsScreenState extends State<EventsScreen> {
     DonationEvent event, {
     required String? registrationStatus,
   }) async {
-    await showModalBottomSheet<void>(
+    final qrEventId = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
@@ -228,9 +233,15 @@ class _EventsScreenState extends State<EventsScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: showAttendanceQr,
+                    onPressed: event.startsAt.isAfter(DateTime.now())
+                        ? null
+                        : () => Navigator.pop(sheetContext, event.id),
                     icon: const Icon(Icons.qr_code),
-                    label: const Text('Show attendance QR'),
+                    label: Text(
+                      event.startsAt.isAfter(DateTime.now())
+                          ? 'QR available when event starts'
+                          : 'Show attendance QR',
+                    ),
                   ),
                 ),
               ],
@@ -239,36 +250,26 @@ class _EventsScreenState extends State<EventsScreen> {
         ),
       ),
     );
+    if (qrEventId != null && mounted) {
+      await showAttendanceQr(qrEventId);
+    }
   }
 
-  Future<void> showAttendanceQr() async {
+  Future<void> showAttendanceQr(String eventId) async {
     final userId = SupabaseService.client?.auth.currentUser?.id;
-    if (userId == null) return;
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('My attendance QR'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            QrImageView(
-              data: 'mydarah:donor:$userId',
-              size: 230,
-              backgroundColor: Colors.white,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Show this to the organisation admin only after you donate.',
-              textAlign: TextAlign.center,
-            ),
-          ],
+    if (userId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in again to show your QR.')),
+      );
+      return;
+    }
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _AttendanceQrScreen(
+          qrData: 'mydarah:event:$eventId:donor:$userId',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
@@ -421,7 +422,10 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donation Events')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Donation Events'),
+      ),
       body: FutureBuilder<_EventData>(
         future: data,
         builder: (context, snapshot) {
@@ -544,4 +548,39 @@ class _EventData {
 
   final List<DonationEvent> events;
   final Map<String, String> registrationStatuses;
+}
+
+class _AttendanceQrScreen extends StatelessWidget {
+  const _AttendanceQrScreen({required this.qrData});
+
+  final String qrData;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('My attendance QR')),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.white,
+                  child: QrImageView(data: qrData, size: 240),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Show this QR to the organisation admin only after you donate.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

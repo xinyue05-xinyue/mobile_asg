@@ -228,7 +228,10 @@ class _CentresScreenState extends State<CentresScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donation Centres')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Donation Centres'),
+      ),
       body: FutureBuilder<_CentreData>(
         future: data,
         builder: (context, snapshot) {

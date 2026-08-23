@@ -112,6 +112,12 @@ class OfficialCentreRepository {
   }
 
   Future<LocationSearchResult> searchLocation(String query) async {
+    final results = await searchLocations(query);
+    if (results.isEmpty) throw StateError('Location not found.');
+    return results.first;
+  }
+
+  Future<List<LocationSearchResult>> searchLocations(String query) async {
     final client = SupabaseService.client;
     if (client == null) throw StateError('Supabase is not configured.');
     final response = await client.functions.invoke(
@@ -122,12 +128,19 @@ class OfficialCentreRepository {
       throw StateError('Location search returned ${response.status}.');
     }
     final payload = response.data;
-    if (payload is! Map) throw const FormatException('Invalid search result.');
-    return LocationSearchResult(
-      latitude: (payload['lat'] as num).toDouble(),
-      longitude: (payload['lon'] as num).toDouble(),
-      address: payload['address'] as String,
-    );
+    if (payload is! Map || payload['results'] is! List) {
+      throw const FormatException('Invalid search results.');
+    }
+    return (payload['results'] as List)
+        .cast<Map<String, Object?>>()
+        .map(
+          (row) => LocationSearchResult(
+            latitude: (row['lat'] as num).toDouble(),
+            longitude: (row['lon'] as num).toDouble(),
+            address: row['address'] as String,
+          ),
+        )
+        .toList();
   }
 }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -40,61 +39,34 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
       ).showSnackBar(SnackBar(content: Text(verificationMessage)));
       return;
     }
-    final today = DateTime.now();
-    final nextDate = await showDatePicker(
-      context: context,
-      initialDate: today.add(const Duration(days: 60)),
-      firstDate: today.add(const Duration(days: 1)),
-      lastDate: today.add(const Duration(days: 365)),
-      helpText: 'Set next eligible donation date',
-    );
-    if (nextDate == null || !mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Verify event donation?'),
-        content: const Text(
-          'This records an attended donation and awards 100 points once.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Back'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Verify'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    final client = SupabaseService.client;
-    if (client == null) return;
+    final nextDate = _threeMonthsAfter(DateTime.now());
     setState(() => verifyingId = registration.id);
     try {
-      await EventRegistrationRepository(client).verifyDonation(
-        registrationId: registration.id,
-        nextEligibleDate: nextDate,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Attendance verified and 100 points awarded.'),
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => QrAttendanceScannerScreen(
+            eventId: widget.event.id,
+            registration: registration,
+            nextEligibleDate: nextDate,
+          ),
         ),
       );
-      setState(() {
-        registrations = loadRegistrations();
-      });
-    } on PostgrestException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyVerificationError(error.message))),
-      );
+      if (verified == true && mounted) {
+        setState(() => registrations = loadRegistrations());
+      }
     } finally {
       if (mounted) setState(() => verifyingId = null);
     }
+  }
+
+  DateTime _threeMonthsAfter(DateTime date) {
+    final targetMonth = date.month + 3;
+    final targetYear = date.year + (targetMonth - 1) ~/ 12;
+    final normalizedMonth = (targetMonth - 1) % 12 + 1;
+    final lastDay = DateTime(targetYear, normalizedMonth + 1, 0).day;
+    final targetDay = date.day > lastDay ? lastDay : date.day;
+    return DateTime(targetYear, normalizedMonth, targetDay);
   }
 
   bool get canVerify =>
@@ -108,50 +80,10 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
     return 'Attendance can only be verified after the event starts.';
   }
 
-  String _friendlyVerificationError(String message) {
-    if (message.contains('not available for attendance')) {
-      return verificationMessage;
-    }
-    if (message.contains('not currently eligible')) {
-      return 'This donor is not currently eligible to donate.';
-    }
-    if (message.contains('Active registration not found')) {
-      return 'This registration has already been processed.';
-    }
-    return 'Unable to verify attendance. Please try again.';
-  }
-
-  Future<void> scanAttendance() async {
-    if (!canVerify) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(verificationMessage)));
-      return;
-    }
-    final verified = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => QrAttendanceScannerScreen(eventId: widget.event.id),
-      ),
-    );
-    if (verified == true && mounted) {
-      setState(() => registrations = loadRegistrations());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.event.title),
-        actions: [
-          IconButton(
-            onPressed: canVerify ? scanAttendance : null,
-            tooltip: 'Scan attendance QR',
-            icon: const Icon(Icons.qr_code_scanner),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.event.title)),
       body: FutureBuilder<List<EventRegistration>>(
         future: registrations,
         builder: (context, snapshot) {

@@ -8,6 +8,7 @@ import '../../models/role_request.dart';
 import '../login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'role_application_screen.dart';
+import 'reward_store_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -73,6 +74,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (submitted == true) setState(refresh);
   }
 
+  Future<void> openRewards() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const RewardStoreScreen()),
+    );
+    if (mounted) setState(refresh);
+  }
+
   Future<void> signOut() async {
     await SupabaseService.client?.auth.signOut();
     if (!mounted) return;
@@ -87,6 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('My Profile'),
         actions: [
           IconButton(
@@ -194,6 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       points: value.rewardPoints,
                       level: rewardLevel(value.rewardPoints),
                       nextTarget: nextRewardTarget(value.rewardPoints),
+                      onRedeem: openRewards,
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -329,11 +340,13 @@ class _RewardProgressCard extends StatelessWidget {
     required this.points,
     required this.level,
     required this.nextTarget,
+    required this.onRedeem,
   });
 
   final int points;
   final String level;
   final int? nextTarget;
+  final VoidCallback onRedeem;
 
   double get progress {
     final target = nextTarget;
@@ -389,9 +402,17 @@ class _RewardProgressCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Levels are recognition badges for verified donations. Every verified '
-              'event or emergency donation earns 100 points. Redeemable vouchers or '
-              'cash rewards are not currently included.',
+              'Every verified event or emergency donation earns 100 points. '
+              'Use points for vouchers and MyDarah merchandise.',
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onRedeem,
+                icon: const Icon(Icons.redeem_outlined),
+                label: const Text('Browse rewards'),
+              ),
             ),
             const SizedBox(height: 10),
             const Wrap(

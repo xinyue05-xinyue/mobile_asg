@@ -150,6 +150,7 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Hospital Portal'),
         actions: [
           IconButton(

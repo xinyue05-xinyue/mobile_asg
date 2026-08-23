@@ -43,6 +43,7 @@ class _DonorHomeScreenState extends State<DonorHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('MyDarah'),
         actions: const [StatisticsIconButton(), NotificationButton()],
       ),

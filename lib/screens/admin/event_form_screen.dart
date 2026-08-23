@@ -4,12 +4,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
-import 'dart:async';
 
 import '../../data/remote/admin_event_repository.dart';
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
+import '../../models/donation_centre.dart';
 import '../../models/donation_event.dart';
+import '../../widgets/location_suggestions.dart';
 
 class EventFormScreen extends StatefulWidget {
   const EventFormScreen({super.key, this.event});
@@ -34,7 +35,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
   String? imageName;
   final mapController = MapController();
   bool searchingLocation = false;
-  Timer? venueDebounce;
+  final venueFocusNode = FocusNode();
+  List<DonationCentre> officialCentres = const [];
+  List<LocationSearchResult> locationSuggestions = const [];
 
   @override
   void initState() {
@@ -49,6 +52,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
     if (event?.latitude != null && event?.longitude != null) {
       location = LatLng(event!.latitude!, event.longitude!);
     }
+    loadOfficialCentres();
+  }
+
+  Future<void> loadOfficialCentres() async {
+    final result = await OfficialCentreRepository().loadCentres();
+    if (!mounted) return;
+    setState(() => officialCentres = result.centres);
   }
 
   Future<void> chooseImage() async {
@@ -87,14 +97,30 @@ class _EventFormScreenState extends State<EventFormScreen> {
     venueController.dispose();
     descriptionController.dispose();
     mapController.dispose();
-    venueDebounce?.cancel();
+    venueFocusNode.dispose();
     super.dispose();
   }
 
-  void venueChanged(String value) {
-    venueDebounce?.cancel();
-    if (value.trim().length < 5) return;
-    venueDebounce = Timer(const Duration(milliseconds: 900), findVenue);
+  Iterable<DonationCentre> matchingCentres(TextEditingValue value) {
+    final query = value.text.trim().toLowerCase();
+    if (query.length < 2) return const Iterable<DonationCentre>.empty();
+    final matches = officialCentres.where(
+      (centre) =>
+          centre.name.toLowerCase().contains(query) ||
+          centre.state.toLowerCase().contains(query),
+    );
+    return matches.take(6);
+  }
+
+  void selectOfficialCentre(DonationCentre centre) {
+    final point = LatLng(centre.latitude, centre.longitude);
+    venueController.value = TextEditingValue(
+      text: centre.name,
+      selection: TextSelection.collapsed(offset: centre.name.length),
+    );
+    setState(() => location = point);
+    mapController.move(point, 16);
+    venueFocusNode.unfocus();
   }
 
   Future<void> findVenue() async {
@@ -107,19 +133,36 @@ class _EventFormScreenState extends State<EventFormScreen> {
     }
     setState(() => searchingLocation = true);
     try {
-      final result = await OfficialCentreRepository().searchLocation(query);
+      final results = await OfficialCentreRepository().searchLocations(query);
       if (!mounted) return;
-      final point = LatLng(result.latitude, result.longitude);
-      setState(() => location = point);
-      mapController.move(point, 16);
-    } catch (error) {
+      if (results.isEmpty) throw StateError('Location not found.');
+      setState(() => locationSuggestions = results);
+    } on Exception {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to find location: $error')),
+        const SnackBar(
+          content: Text(
+            'No matching location found. Try the official place name and city or state.',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => searchingLocation = false);
     }
+  }
+
+  void selectLocationSuggestion(LocationSearchResult result) {
+    final point = LatLng(result.latitude, result.longitude);
+    venueController.value = TextEditingValue(
+      text: result.address,
+      selection: TextSelection.collapsed(offset: result.address.length),
+    );
+    setState(() {
+      locationSuggestions = const [];
+      location = point;
+    });
+    mapController.move(point, 16);
+    venueFocusNode.unfocus();
   }
 
   String dateLabel(DateTime value) {
@@ -226,15 +269,67 @@ class _EventFormScreenState extends State<EventFormScreen> {
               decoration: const InputDecoration(labelText: 'Event title'),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: venueController,
-              validator: _required,
-              onChanged: venueChanged,
-              onFieldSubmitted: (_) => findVenue(),
-              decoration: const InputDecoration(
-                labelText: 'Venue or full address',
+            RawAutocomplete<DonationCentre>(
+              textEditingController: venueController,
+              focusNode: venueFocusNode,
+              displayStringForOption: (centre) => centre.name,
+              optionsBuilder: matchingCentres,
+              onSelected: selectOfficialCentre,
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) =>
+                      TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        validator: _required,
+                        onChanged: (_) {
+                          if (locationSuggestions.isNotEmpty) {
+                            setState(() => locationSuggestions = const []);
+                          }
+                        },
+                        onFieldSubmitted: (_) => findVenue(),
+                        decoration: InputDecoration(
+                          labelText: 'Venue or full address',
+                          suffixIcon: IconButton(
+                            tooltip: 'Search address',
+                            onPressed: searchingLocation ? null : findVenue,
+                            icon: const Icon(Icons.search),
+                          ),
+                        ),
+                      ),
+              optionsViewBuilder: (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: SizedBox(
+                    width: MediaQuery.sizeOf(context).width - 48,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 280),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (context, index) {
+                          final centre = options.elementAt(index);
+                          return ListTile(
+                            leading: const Icon(Icons.local_hospital_outlined),
+                            title: Text(centre.name),
+                            subtitle: Text(centre.state),
+                            onTap: () => onSelected(centre),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
+            if (locationSuggestions.isNotEmpty)
+              LocationSuggestions(
+                results: locationSuggestions,
+                onSelected: selectLocationSuggestion,
+              ),
             const SizedBox(height: 16),
             Text(
               'Event location',
@@ -242,8 +337,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Enter the venue address above. The map updates automatically; '
-              'tap only to adjust the exact entrance or meeting point.',
+              'Type and select an official hospital, or enter any school, mall, '
+              'hall or full address and press search. Choose the correct result.',
             ),
             const SizedBox(height: 8),
             Row(

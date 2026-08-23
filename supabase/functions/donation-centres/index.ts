@@ -13,7 +13,10 @@ const corsHeaders = {
 };
 
 const addressCache = new Map<string, string>();
-const searchCache = new Map<string, { lat: number; lon: number; address: string }>();
+const searchCache = new Map<
+  string,
+  Array<{ lat: number; lon: number; address: string }>
+>();
 let geocodeQueue = Promise.resolve();
 let lastGeocodeAt = 0;
 
@@ -52,7 +55,9 @@ function reverseAddress(lat: number, lon: number): Promise<string> {
   return task;
 }
 
-function searchLocation(query: string): Promise<{ lat: number; lon: number; address: string }> {
+function searchLocations(
+  query: string,
+): Promise<Array<{ lat: number; lon: number; address: string }>> {
   const key = query.trim().toLowerCase();
   const cached = searchCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -63,7 +68,7 @@ function searchLocation(query: string): Promise<{ lat: number; lon: number; addr
     const url = new URL("https://nominatim.openstreetmap.org/search");
     url.searchParams.set("format", "jsonv2");
     url.searchParams.set("q", query);
-    url.searchParams.set("limit", "1");
+    url.searchParams.set("limit", "5");
     url.searchParams.set("countrycodes", "my");
     lastGeocodeAt = Date.now();
     const response = await fetch(url, {
@@ -75,13 +80,13 @@ function searchLocation(query: string): Promise<{ lat: number; lon: number; addr
     if (!response.ok) throw new Error(`Location search returned ${response.status}`);
     const rows = await response.json();
     if (!Array.isArray(rows) || rows.length === 0) throw new Error("Location not found");
-    const result = {
-      lat: Number(rows[0].lat),
-      lon: Number(rows[0].lon),
-      address: String(rows[0].display_name ?? query),
-    };
-    searchCache.set(key, result);
-    return result;
+    const results = rows.map((row) => ({
+      lat: Number(row.lat),
+      lon: Number(row.lon),
+      address: String(row.display_name ?? query),
+    }));
+    searchCache.set(key, results);
+    return results;
   });
   geocodeQueue = task.then(() => undefined, () => undefined);
   return task;
@@ -123,9 +128,14 @@ Deno.serve(async (request) => {
             { status: 400, headers: corsHeaders },
           );
         }
-        const result = await searchLocation(query);
+        const results = await searchLocations(query);
+        const first = results[0];
         return Response.json(
-          { ...result, attribution: "© OpenStreetMap contributors" },
+          {
+            results,
+            ...first,
+            attribution: "© OpenStreetMap contributors",
+          },
           { headers: { ...corsHeaders, "Cache-Control": "public, max-age=86400" } },
         );
       }

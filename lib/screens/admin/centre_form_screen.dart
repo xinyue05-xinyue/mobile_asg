@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +7,7 @@ import '../../data/remote/admin_centre_repository.dart';
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_centre.dart';
+import '../../widgets/location_suggestions.dart';
 
 class CentreFormScreen extends StatefulWidget {
   const CentreFormScreen({super.key, this.centre});
@@ -30,7 +30,10 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
   LatLng? selectedLocation;
   final mapController = MapController();
   bool searchingLocation = false;
-  Timer? addressDebounce;
+  final addressFocusNode = FocusNode();
+  final officialRepository = OfficialCentreRepository();
+  List<DonationCentre> officialCentres = const [];
+  List<LocationSearchResult> locationSuggestions = const [];
 
   @override
   void initState() {
@@ -49,6 +52,13 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
     if (centre != null) {
       selectedLocation = LatLng(centre.latitude, centre.longitude);
     }
+    loadOfficialCentres();
+  }
+
+  Future<void> loadOfficialCentres() async {
+    final result = await officialRepository.loadCentres();
+    if (!mounted) return;
+    setState(() => officialCentres = result.centres);
   }
 
   void selectLocation(LatLng point) {
@@ -68,23 +78,58 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
     longitudeController.dispose();
     hoursController.dispose();
     mapController.dispose();
-    addressDebounce?.cancel();
+    addressFocusNode.dispose();
     super.dispose();
   }
 
-  void addressChanged(String value) {
-    addressDebounce?.cancel();
-    if (value.trim().length < 5) return;
-    addressDebounce = Timer(const Duration(milliseconds: 900), findAddress);
+  Iterable<DonationCentre> matchingCentres(TextEditingValue value) {
+    final query = value.text.trim().toLowerCase();
+    if (query.length < 2) return const Iterable<DonationCentre>.empty();
+    return officialCentres
+        .where(
+          (centre) =>
+              centre.name.toLowerCase().contains(query) ||
+              centre.state.toLowerCase().contains(query),
+        )
+        .take(6);
+  }
+
+  Future<void> selectOfficialCentre(DonationCentre centre) async {
+    addressFocusNode.unfocus();
+    nameController.text = centre.name;
+    stateController.text = centre.state;
+    addressController.text = centre.name;
+    final point = LatLng(centre.latitude, centre.longitude);
+    selectLocation(point);
+    mapController.move(point, 16);
+
+    setState(() => searchingLocation = true);
+    final address = await officialRepository.getAddress(centre);
+    if (!mounted) return;
+    addressController.value = TextEditingValue(
+      text: address,
+      selection: TextSelection.collapsed(offset: address.length),
+    );
+    setState(() => searchingLocation = false);
   }
 
   Future<void> findAddress() async {
-    final query = [
-      nameController.text.trim(),
-      addressController.text.trim(),
-      stateController.text.trim(),
-    ].where((value) => value.isNotEmpty).join(', ');
-    if (query.length < 3) {
+    final state = stateController.text.trim();
+    final queries = <String>{
+      _normaliseLocationQuery(
+        [
+          addressController.text.trim(),
+          state,
+        ].where((value) => value.isNotEmpty).join(', '),
+      ),
+      _normaliseLocationQuery(
+        [
+          nameController.text.trim(),
+          state,
+        ].where((value) => value.isNotEmpty).join(', '),
+      ),
+    }.where((value) => value.length >= 3).toList();
+    if (queries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter the centre address first.')),
       );
@@ -92,19 +137,45 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
     }
     setState(() => searchingLocation = true);
     try {
-      final result = await OfficialCentreRepository().searchLocation(query);
+      List<LocationSearchResult> results = const [];
+      for (final query in queries) {
+        try {
+          results = await officialRepository.searchLocations(query);
+          if (results.isNotEmpty) break;
+        } on Exception {
+          // Try the broader centre-name query next.
+        }
+      }
       if (!mounted) return;
-      final point = LatLng(result.latitude, result.longitude);
-      selectLocation(point);
-      mapController.move(point, 16);
-    } catch (error) {
+      if (results.isEmpty) throw StateError('Location not found.');
+      setState(() => locationSuggestions = results);
+    } on Exception {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to find location: $error')),
+        const SnackBar(
+          content: Text(
+            'No matching location found. Try a broader place name, for example "TAR UMT Kuala Lumpur".',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => searchingLocation = false);
     }
+  }
+
+  String _normaliseLocationQuery(String value) =>
+      value.replaceAll(RegExp(r'\btarumt\b', caseSensitive: false), 'TAR UMT');
+
+  void selectLocationSuggestion(LocationSearchResult result) {
+    final point = LatLng(result.latitude, result.longitude);
+    addressController.value = TextEditingValue(
+      text: result.address,
+      selection: TextSelection.collapsed(offset: result.address.length),
+    );
+    setState(() => locationSuggestions = const []);
+    selectLocation(point);
+    mapController.move(point, 16);
+    addressFocusNode.unfocus();
   }
 
   String? requiredValue(String? value) {
@@ -184,13 +255,72 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
               label: 'Centre name',
               validator: requiredValue,
             ),
-            _TextField(
-              controller: addressController,
-              label: 'Address',
-              validator: requiredValue,
-              onChanged: addressChanged,
-              onSubmitted: (_) => findAddress(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: RawAutocomplete<DonationCentre>(
+                textEditingController: addressController,
+                focusNode: addressFocusNode,
+                displayStringForOption: (centre) => centre.name,
+                optionsBuilder: matchingCentres,
+                onSelected: selectOfficialCentre,
+                fieldViewBuilder:
+                    (context, controller, focusNode, onFieldSubmitted) =>
+                        TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          validator: requiredValue,
+                          onChanged: (_) {
+                            if (locationSuggestions.isNotEmpty) {
+                              setState(() => locationSuggestions = const []);
+                            }
+                          },
+                          onFieldSubmitted: (_) => findAddress(),
+                          decoration: InputDecoration(
+                            labelText: 'Address or location name',
+                            suffixIcon: IconButton(
+                              tooltip: 'Search address',
+                              onPressed: searchingLocation ? null : findAddress,
+                              icon: const Icon(Icons.search),
+                            ),
+                          ),
+                        ),
+                optionsViewBuilder: (context, onSelected, options) => Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 6,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: SizedBox(
+                      width: MediaQuery.sizeOf(context).width - 48,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 280),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final centre = options.elementAt(index);
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.local_hospital_outlined,
+                              ),
+                              title: Text(centre.name),
+                              subtitle: Text(centre.state),
+                              onTap: () => onSelected(centre),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
+            if (locationSuggestions.isNotEmpty)
+              LocationSuggestions(
+                results: locationSuggestions,
+                onSelected: selectLocationSuggestion,
+              ),
             _TextField(
               controller: stateController,
               label: 'State',
@@ -202,8 +332,8 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Enter the address above. The map updates automatically; tap the '
-              'map only if the entrance needs a small adjustment.',
+              'Type and select an official hospital, or enter any school, mall, '
+              'hall or full address and press search. Choose the correct result.',
             ),
             const SizedBox(height: 8),
             Row(
@@ -288,15 +418,11 @@ class _TextField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.validator,
-    this.onChanged,
-    this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String label;
   final String? Function(String?)? validator;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -305,8 +431,6 @@ class _TextField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         validator: validator,
-        onChanged: onChanged,
-        onFieldSubmitted: onSubmitted,
         decoration: InputDecoration(labelText: label),
       ),
     );

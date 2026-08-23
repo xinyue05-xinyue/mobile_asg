@@ -171,6 +171,7 @@ class _SystemAdminDashboardScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('System Administration'),
         actions: [
           IconButton(
