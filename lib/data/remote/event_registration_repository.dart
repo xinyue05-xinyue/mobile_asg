@@ -30,10 +30,7 @@ class EventRegistrationRepository {
   Future<void> register(String eventId) async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');
-    await client.from('event_registrations').insert({
-      'event_id': eventId,
-      'donor_id': user.id,
-    });
+    await client.rpc('register_for_event', params: {'p_event_id': eventId});
   }
 
   Future<List<EventRegistration>> getForEvent(String eventId) async {
@@ -41,11 +38,30 @@ class EventRegistrationRepository {
         .from('event_registrations')
         .select(
           'id, event_id, donor_id, status, registered_at, '
-          'donor:profiles!event_registrations_donor_id_fkey(full_name, blood_type)',
+          'donor:profiles!event_registrations_donor_id_fkey('
+          'full_name, blood_type, phone, next_eligible_date)',
         )
         .eq('event_id', eventId)
         .order('registered_at');
     return rows.map(EventRegistration.fromMap).toList();
+  }
+
+  Future<EventRegistration?> getForEventAndDonor({
+    required String eventId,
+    required String donorId,
+  }) async {
+    final rows = await client
+        .from('event_registrations')
+        .select(
+          'id, event_id, donor_id, status, registered_at, '
+          'donor:profiles!event_registrations_donor_id_fkey('
+          'full_name, blood_type, phone, next_eligible_date)',
+        )
+        .eq('event_id', eventId)
+        .eq('donor_id', donorId)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    return EventRegistration.fromMap(rows.first);
   }
 
   Future<void> verifyDonation({

@@ -34,6 +34,13 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
     return '$day/$month/${value.year}';
   }
 
+  String displayStatus(DonationEvent event) {
+    if (event.status == 'cancelled') return 'Cancelled';
+    if (!event.endsAt.isAfter(DateTime.now())) return 'Ended';
+    if (!event.startsAt.isAfter(DateTime.now())) return 'In progress';
+    return 'Upcoming';
+  }
+
   Future<void> openForm([DonationEvent? event]) async {
     final changed = await Navigator.push<bool>(
       context,
@@ -105,6 +112,8 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final event = items[index];
+              final status = displayStatus(event);
+              final canModify = status == 'Upcoming';
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -115,8 +124,31 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         event.title,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      Text('${event.venue} • ${dateLabel(event.startsAt)}'),
-                      Text('Status: ${event.status}'),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 19),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(event.venue)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_month_outlined, size: 19),
+                          const SizedBox(width: 8),
+                          Text(dateLabel(event.startsAt)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 19),
+                          const SizedBox(width: 8),
+                          Text('Status: $status'),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -131,7 +163,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                             ),
                             child: const Text('Registrations'),
                           ),
-                          if (event.status == 'upcoming') ...[
+                          if (canModify) ...[
                             OutlinedButton(
                               onPressed: () => openForm(event),
                               child: const Text('Edit'),

@@ -18,7 +18,6 @@ class EventRegistrationsScreen extends StatefulWidget {
 
 class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
   late Future<List<EventRegistration>> registrations;
-  String? verifyingId;
 
   @override
   void initState() {
@@ -32,41 +31,22 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
     return EventRegistrationRepository(client).getForEvent(widget.event.id);
   }
 
-  Future<void> verify(EventRegistration registration) async {
+  Future<void> scanAttendance() async {
     if (!canVerify) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(verificationMessage)));
       return;
     }
-    final nextDate = _threeMonthsAfter(DateTime.now());
-    setState(() => verifyingId = registration.id);
-    try {
-      final verified = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => QrAttendanceScannerScreen(
-            eventId: widget.event.id,
-            registration: registration,
-            nextEligibleDate: nextDate,
-          ),
-        ),
-      );
-      if (verified == true && mounted) {
-        setState(() => registrations = loadRegistrations());
-      }
-    } finally {
-      if (mounted) setState(() => verifyingId = null);
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QrAttendanceScannerScreen(event: widget.event),
+      ),
+    );
+    if (mounted) {
+      setState(() => registrations = loadRegistrations());
     }
-  }
-
-  DateTime _threeMonthsAfter(DateTime date) {
-    final targetMonth = date.month + 3;
-    final targetYear = date.year + (targetMonth - 1) ~/ 12;
-    final normalizedMonth = (targetMonth - 1) % 12 + 1;
-    final lastDay = DateTime(targetYear, normalizedMonth + 1, 0).day;
-    final targetDay = date.day > lastDay ? lastDay : date.day;
-    return DateTime(targetYear, normalizedMonth, targetDay);
   }
 
   bool get canVerify =>
@@ -84,6 +64,13 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.event.title)),
+      floatingActionButton: canVerify
+          ? FloatingActionButton.extended(
+              onPressed: scanAttendance,
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan donor QR'),
+            )
+          : null,
       body: FutureBuilder<List<EventRegistration>>(
         future: registrations,
         builder: (context, snapshot) {
@@ -100,7 +87,7 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
             return const Center(child: Text('No donor registrations yet.'));
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             itemCount: items.length + (canVerify ? 0 : 1),
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
@@ -125,21 +112,9 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
                   ),
                   title: Text(registration.donorName),
                   subtitle: Text('Status: ${registration.status}'),
-                  trailing: registration.status != 'registered'
+                  trailing: registration.status == 'attended'
                       ? const Icon(Icons.verified, color: Colors.green)
-                      : FilledButton(
-                          onPressed: canVerify && verifyingId == null
-                              ? () => verify(registration)
-                              : null,
-                          child: verifyingId == registration.id
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Verify'),
-                        ),
+                      : const Icon(Icons.qr_code_scanner),
                 ),
               );
             },

@@ -29,7 +29,9 @@ class ProfileRepository {
       client.from('profiles').select().eq('id', user.id).single(),
       client
           .from('donations')
-          .select('id, donation_date, verification_status')
+          .select(
+            'id, donation_date, verification_status, event_id, emergency_request_id',
+          )
           .eq('donor_id', user.id)
           .order('donation_date', ascending: false),
       client

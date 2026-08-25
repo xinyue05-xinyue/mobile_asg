@@ -9,6 +9,7 @@ import '../statistics_screen.dart';
 import '../staff_profile_screen.dart';
 import 'manage_centres_screen.dart';
 import 'manage_events_screen.dart';
+import 'admin_registrations_overview_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -143,6 +144,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         label: 'Upcoming events',
                         value: '${value.upcomingEvents}',
                         icon: Icons.event_outlined,
+                        onTap: openEvents,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -151,6 +153,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         label: 'Donor registrations',
                         value: '${value.donorRegistrations}',
                         icon: Icons.fact_check_outlined,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const AdminRegistrationsOverviewScreen(),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -186,25 +195,31 @@ class _SummaryCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    required this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(value, style: Theme.of(context).textTheme.headlineMedium),
-            Text(label),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 16),
+              Text(value, style: Theme.of(context).textTheme.headlineMedium),
+              Text(label),
+            ],
+          ),
         ),
       ),
     );

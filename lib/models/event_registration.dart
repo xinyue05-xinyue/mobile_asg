@@ -7,6 +7,8 @@ class EventRegistration {
     required this.registeredAt,
     required this.donorName,
     required this.bloodType,
+    this.phone,
+    this.nextEligibleDate,
   });
 
   final String id;
@@ -16,6 +18,8 @@ class EventRegistration {
   final DateTime registeredAt;
   final String donorName;
   final String? bloodType;
+  final String? phone;
+  final DateTime? nextEligibleDate;
 
   factory EventRegistration.fromMap(Map<String, Object?> map) {
     final donor = map['donor'] as Map<String, Object?>?;
@@ -27,6 +31,10 @@ class EventRegistration {
       registeredAt: DateTime.parse(map['registered_at']! as String).toLocal(),
       donorName: donor?['full_name'] as String? ?? 'Donor',
       bloodType: donor?['blood_type'] as String?,
+      phone: donor?['phone'] as String?,
+      nextEligibleDate: donor?['next_eligible_date'] == null
+          ? null
+          : DateTime.tryParse(donor!['next_eligible_date'] as String),
     );
   }
 }

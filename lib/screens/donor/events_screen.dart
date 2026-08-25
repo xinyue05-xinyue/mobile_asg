@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/remote/event_registration_repository.dart';
+import '../../data/remote/profile_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/repositories/data_sync_service.dart';
 import '../../models/donation_event.dart';
@@ -42,6 +43,11 @@ class _EventsScreenState extends State<EventsScreen> {
     final registrationStatuses = client == null
         ? <String, String>{}
         : await EventRegistrationRepository(client).getMyRegistrationStatuses();
+    final nextEligibleDate = client == null
+        ? null
+        : (await ProfileRepository(
+            client,
+          ).getCurrentProfile()).nextEligibleDate;
     final now = DateTime.now();
     final visibleEvents = events.where((event) {
       if (event.status != 'upcoming') return false;
@@ -54,7 +60,7 @@ class _EventsScreenState extends State<EventsScreen> {
       return registrationStatus == 'registered' &&
           event.endsAt.add(const Duration(days: 1)).isAfter(now);
     }).toList();
-    return _EventData(visibleEvents, registrationStatuses);
+    return _EventData(visibleEvents, registrationStatuses, nextEligibleDate);
   }
 
   String dateLabel(DateTime value) {
@@ -77,6 +83,27 @@ class _EventsScreenState extends State<EventsScreen> {
         event.title.toLowerCase().contains(query) ||
         event.venue.toLowerCase().contains(query) ||
         (event.description?.toLowerCase().contains(query) ?? false);
+  }
+
+  bool isEligibleForEvent(DonationEvent event, DateTime? nextEligibleDate) {
+    if (nextEligibleDate == null) return true;
+    final eventDay = DateTime(
+      event.startsAt.year,
+      event.startsAt.month,
+      event.startsAt.day,
+    );
+    final eligibleDay = DateTime(
+      nextEligibleDate.year,
+      nextEligibleDate.month,
+      nextEligibleDate.day,
+    );
+    return !eventDay.isBefore(eligibleDay);
+  }
+
+  String shortDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    return '$day/$month/${value.year}';
   }
 
   Future<void> showEventDetails(
@@ -267,9 +294,8 @@ class _EventsScreenState extends State<EventsScreen> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) => _AttendanceQrScreen(
-          qrData: 'mydarah:event:$eventId:donor:$userId',
-        ),
+        builder: (_) =>
+            _AttendanceQrScreen(qrData: 'mydarah:event:$eventId:donor:$userId'),
       ),
     );
   }
@@ -337,8 +363,13 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
-  Widget eventCard(DonationEvent event, {required String? registrationStatus}) {
+  Widget eventCard(
+    DonationEvent event, {
+    required String? registrationStatus,
+    required DateTime? nextEligibleDate,
+  }) {
     final registered = registrationStatus != null;
+    final eligible = isEligibleForEvent(event, nextEligibleDate);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -382,6 +413,27 @@ class _EventsScreenState extends State<EventsScreen> {
               const SizedBox(height: 8),
               Text(description),
             ],
+            if (!registered && !eligible && nextEligibleDate != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Not eligible for this event. You can donate again from ${shortDate(nextEligibleDate)}.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -394,7 +446,8 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
                 const Spacer(),
                 FilledButton.icon(
-                  onPressed: registered || registeringEventId != null
+                  onPressed:
+                      registered || !eligible || registeringEventId != null
                       ? null
                       : () => confirmRegistration(event),
                   icon: registeringEventId == event.id
@@ -408,6 +461,8 @@ class _EventsScreenState extends State<EventsScreen> {
                         ? 'Attended'
                         : registered
                         ? 'Registered'
+                        : !eligible
+                        ? 'Not eligible'
                         : 'Register',
                   ),
                 ),
@@ -437,7 +492,7 @@ class _EventsScreenState extends State<EventsScreen> {
               child: Text('Unable to load events: ${snapshot.error}'),
             );
           }
-          final value = snapshot.data ?? const _EventData([], {});
+          final value = snapshot.data ?? const _EventData([], {}, null);
           final matching = value.events.where(matchesSearch).toList();
           final registered = matching
               .where(
@@ -500,6 +555,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                 event,
                                 registrationStatus:
                                     value.registrationStatuses[event.id],
+                                nextEligibleDate: value.nextEligibleDate,
                               ),
                               const SizedBox(height: 8),
                             ],
@@ -531,7 +587,11 @@ class _EventsScreenState extends State<EventsScreen> {
                   )
                 else
                   for (final event in available) ...[
-                    eventCard(event, registrationStatus: null),
+                    eventCard(
+                      event,
+                      registrationStatus: null,
+                      nextEligibleDate: value.nextEligibleDate,
+                    ),
                     const SizedBox(height: 12),
                   ],
               ],
@@ -544,10 +604,15 @@ class _EventsScreenState extends State<EventsScreen> {
 }
 
 class _EventData {
-  const _EventData(this.events, this.registrationStatuses);
+  const _EventData(
+    this.events,
+    this.registrationStatuses,
+    this.nextEligibleDate,
+  );
 
   final List<DonationEvent> events;
   final Map<String, String> registrationStatuses;
+  final DateTime? nextEligibleDate;
 }
 
 class _AttendanceQrScreen extends StatelessWidget {

@@ -68,7 +68,10 @@ New public accounts always start as donors. A donor can apply for organisation-a
 - Dashboard shortcuts navigate directly to Centres, Events, and My Donations
 - Donors can pull down to refresh the dashboard data
 - Edit full name, blood type, phone number, date of birth, and notification preference
-- View donation history
+- View donation history, including both verified event and emergency donations
+  with the source labelled on every record
+- Profile history is kept compact: Donation history and Reward history are
+  navigation rows that open dedicated detail pages
 - View next eligible donation date
 - View reward balance and reward transaction history
 - Reward progress shows the current recognition level, progress to the next
@@ -107,7 +110,13 @@ New public accounts always start as donors. A donor can apply for organisation-a
 ### Donation events
 
 - Organisation-admin dashboard displays live upcoming-event and active donor-registration counts from Supabase
+- Both dashboard counters are interactive: Upcoming events opens event
+  management, while Donor registrations opens a combined donor/event list
 - Organisation admins can create, edit, and cancel events
+- Organisation event cards use separate venue, date, and status rows so long
+  addresses do not disturb date alignment
+- Event cards derive `Upcoming`, `In progress`, or `Ended` from the actual start
+  and end times; ended events can no longer be edited or cancelled in the UI
 - Donors can view upcoming events and register
 - Donors can search upcoming events by title, venue, or description
 - Registered events appear in a grey collapsible section at the top of the page;
@@ -118,9 +127,17 @@ New public accounts always start as donors. A donor can apply for organisation-a
   an optional JPG, PNG, or WebP event image up to 5 MB
 - Donor event details display the image, map marker, and Google Maps directions
 - Registered donors can display a personal attendance QR for an event
-- Organisation admins can scan the QR after an event starts; Supabase validates
-  ownership, registration, eligibility, and duplicate status before creating the
-  donation, awarding 100 points, and setting eligibility 60 days later
+- Each QR is unique to both the donor and event; it is not a permanent reusable
+  donor QR
+- Organisation admins use one continuous event scanner instead of searching for
+  each donor and pressing Verify individually
+- Scanning identifies the registered donor and displays their name, blood type,
+  phone, and eligibility before confirmation
+- Supabase validates ownership, registration, eligibility, and duplicate status
+  before creating the donation, awarding 100 points, and setting eligibility
+  three calendar months later
+- Donors cannot register for events dated before their next eligible date; this
+  is enforced in Flutter and by a protected Supabase registration RPC
 - Organisation admins can view registered donors
 - Tapping a donor response/registration opens the donor's relevant details in a
   scrollable panel without the previous bottom-overflow error
@@ -217,6 +234,8 @@ Run the SQL migrations separately and in this order:
 12. `supabase/012_event_location_images.sql`
 13. `supabase/013_qr_attendance.sql`
 14. `supabase/014_organisation_profiles.sql`
+15. `supabase/015_reward_redemption.sql`
+16. `supabase/016_event_qr_eligibility.sql`
 
 The original developer has already run these migrations on the current Supabase project. They only need to be rerun when setting up a new Supabase project.
 
@@ -224,6 +243,10 @@ Migration `014_organisation_profiles.sql` must exist on the current project for
 the new hospital/organisation profile pages. If those pages report that
 `organisation_profiles` does not exist, run migration 014 again in the Supabase
 SQL Editor.
+
+Migration `016_event_qr_eligibility.sql` is required for the continuous QR
+scanner, automatic 100-point award, three-calendar-month waiting period, and
+server-side event-registration eligibility checks.
 
 ### Required Edge Function deployment
 

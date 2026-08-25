@@ -7,6 +7,7 @@ import '../../models/profile_overview.dart';
 import '../../models/role_request.dart';
 import '../login_screen.dart';
 import 'edit_profile_screen.dart';
+import 'history_screens.dart';
 import 'role_application_screen.dart';
 import 'reward_store_screen.dart';
 
@@ -240,53 +241,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      'Donation history',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    if (value.donations.isEmpty)
-                      const Card(
-                        child: ListTile(
-                          title: Text('No donation records yet.'),
-                        ),
-                      )
-                    else
-                      ...value.donations.map(
-                        (donation) => Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.bloodtype_outlined),
-                            title: Text(dateLabel(donation.donationDate)),
-                            subtitle: Text(donation.verificationStatus),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Reward history',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    if (value.rewards.isEmpty)
-                      const Card(
-                        child: ListTile(
-                          title: Text('No reward transactions yet.'),
-                        ),
-                      )
-                    else
-                      ...value.rewards.map(
-                        (reward) => Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.stars_outlined),
-                            title: Text(
-                              '${reward.points > 0 ? '+' : ''}${reward.points} points',
-                            ),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.history),
+                            title: const Text('Donation history'),
                             subtitle: Text(
-                              '${reward.transactionType} • ${dateLabel(reward.createdAt)}',
+                              '${value.donations.length} verified donation${value.donations.length == 1 ? '' : 's'}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DonationHistoryScreen(
+                                  donations: value.donations,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.stars_outlined),
+                            title: const Text('Reward history'),
+                            subtitle: Text(
+                              '${value.rewards.length} transaction${value.rewards.length == 1 ? '' : 's'}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    RewardHistoryScreen(rewards: value.rewards),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
                     const SizedBox(height: 24),
                     Text(
                       'Staff access',
