@@ -1,6 +1,48 @@
 # MyDarah Project Handover
 
-Last updated: 23 August 2026
+Last updated: 28 August 2026
+
+## Latest UI consistency update (28 August)
+
+### Follow-up fixes
+
+### Multi-institution / feedback update
+
+### Scanner reliability follow-up
+
+- Fixed remaining Future-returning setState callbacks after scanning and reward redemption.
+- QR identifiers now require the exact event/donor UUID format; wrong-event and malformed codes are rejected before querying the database. Camera errors provide manual-verification guidance. Async scanner operations check mounted state before showing dialogs or starting a donation verification.
+- Added QR parser regression tests; full suite has 23 passing tests. No new SQL for this follow-up. Physical camera tests remain pending.
+- Outstanding database hardening: existing verification functions lock individual registrations/responses, but not the shared donor profile before checking eligibility. Simultaneous verification across different events/emergency responses may race. A future migration should serialize all verification paths by donor and test concurrent calls; do not claim this is already solved by QR parsing or button disabling.
+
+- REQUIRED: run `supabase/021_feedback_history_event_ownership.sql` after the existing migrations. This session creates the file only; it does not deploy it. Organisation event writes are owner-only (system admin keeps oversight), event ownership cannot be reassigned, and feedback replies are append-only through an admin-only RPC. Existing last replies are retained as legacy entries. Earlier overwritten replies cannot be recovered.
+- Feedback has no manual refresh button or pull-to-refresh. Automatic checks remain every 10 seconds while open. The admin writes a NEW reply instead of editing a prefilled response; blank reply saves only the status.
+- One account per organisation/hospital remains the model. Donor events show Organised by; emergency requests show Requested by. Tapping shows institutional image, phone, address, description and directions without exposing staff personal profiles.
+- SQLite schema is now version 6, preserving event creator ID and organisation name. It upgrades automatically; no manual local-database reset is needed. If account/eligibility lookup fails, cached events remain read-only and the page explains that registration is unavailable. Private registration/eligibility data is not cached across users.
+- Run the following acceptance checks against TEST accounts after deploying SQL 021. These live/physical-device checks were not performed by this session:
+  1. Organisation A and B create separate events. Each sees its own management list. Attempt cross-owner update through the API with each user's session: it must affect no row or return permission denied. B must not verify a donor registered for A's event.
+  2. Hospital A and B create separate requests. Each can manage/verify only its own requests. Donor request cards identify the correct institution.
+  3. Admin replies twice to one feedback. Donor sees both timestamped replies; status-only save adds no reply. Another donor cannot read those replies. Non-admin cannot call review_feedback.
+  4. Load events online on Android, disable network, reopen Events: cached events remain visible, registration is disabled. Restore network and reopen Events to restore account checks.
+  5. Physical phone: valid QR, wrong-event QR, duplicate scan, ineligible donor, manual fallback and camera permission denial. Check no duplicate points are granted.
+  6. Physical phone: notification permission denied/granted, reminder scheduling/cancellation, device reboot and delivery. Inexact Android reminders can arrive later than the selected time.
+
+- Profile simplification: donor header shows name, email and blood type only; phone, birth date and notification preferences remain available in Edit profile. System-admin email is directly below the role; admin editing saves only the name, not phone. Existing stored phone values are not deleted and other roles are unaffected.
+
+- Event details now use a full page with an app-bar back arrow. List/detail registration buttons use the same eligibility rule and close at the event end; the server RPC remains authoritative.
+- Donor personal information is combined into the top identity card. Home Points opens Reward history.
+- Feedback entries open a full detail page with attachments and admin reply. Visible feedback refreshes every 10 seconds. Fixed the admin reply refresh callback returning a Future from setState; save now confirms a row was updated. Database `open` is displayed as Submitted, with Reviewed and Resolved unchanged.
+- Application and feedback submit buttons both use the send icon.
+- NEW REQUIRED DATABASE STEP: run `supabase/020_reward_history_links.sql` in Supabase SQL Editor. It links new redemptions to point transactions and snapshots item names. Legacy links are backfilled only for one-to-one exact donor/timestamp/cost matches; ambiguous records stay unlinked. The app tolerates the pre-migration schema. SQL has not been deployed by this coding session.
+
+- All roles: logout appears only in the profile app bar; feedback/inbox is at the bottom of the profile.
+- Donor Home: My Donations and the donation count open Donation history directly. Blood type remains below email on the profile identity card.
+- Donation and reward history rows open scrollable detail pages. Event records show venue and full start/end schedule; emergency records show request information. Deleted/inaccessible related records are labelled unavailable.
+- Reward details show transaction reference, type, time, points and linked donation where present. Existing redeemed transactions have no redemption ID, so individual merchandise/code details remain in Browse rewards; do not guess a match from date or points.
+- Registered-events expansion borders removed; feedback upload wording/style matches staff supporting documents. Open feedback is labelled awaiting review.
+- Organisation registrations now offer manual Verify (with identity/completed-donation confirmation) alongside the bottom QR scanner. Both call the existing verify_event_qr RPC, preserving its permission, eligibility and duplicate checks. No new SQL is required if migration 016 is already applied.
+- Donor event cards/details, organiser event management and registration views show both start and end date/time.
+- Validation: 13 Flutter tests passed. Still test a real QR scan and manual verification using separate eligible test registrations against the deployed database; tests do not award real points.
 
 ## Project overview
 
@@ -318,6 +360,32 @@ uses Android Studio's bundled Java 17 JBR. `flutter doctor -v` should be checked
 on another computer before building.
 
 ## Important testing notes
+
+- Staff roles now enter a two-tab `StaffShell`: Main and Profile. Feedback and
+  logout are profile-content actions, not dashboard header icons. System admin
+  feedback opens the existing inbox; hospital, organiser and donor feedback
+  opens the submission screen. Main headers retain statistics and notifications.
+- ProfileActions provides a shared logout confirmation and failure handling.
+  No SQL migration is required for this navigation update.
+
+### Login/network audit (27 August 2026)
+
+- The Android Studio run configuration's existing publishable key and URL
+  returned HTTP 200 from the Supabase Auth health endpoint on the development
+  computer. This checks connectivity and key acceptance, not account passwords,
+  deployed SQL migrations, or emulator connectivity.
+- Added INTERNET permission to the main manifest so release builds can use
+  Supabase as well as debug builds.
+- Login now refuses missing configuration instead of navigating to a donor
+  screen without authenticating. Login and signup show safe, clearer messages
+  for network, certificate, configuration, and account-profile errors.
+- In-progress registration no longer offers pre-event reminders. Reminder
+  updates and cancellation now refresh the event card.
+- Added regression tests for authentication error messages, missing-config
+  login, and donor-level boundaries. Keep TLS certificate verification enabled.
+- The Android Studio 'Gradle project not linked' editor banner is distinct
+  from Gradle build failures. Do not rewrite valid Gradle files solely because
+  editor code insight is unavailable.
 
 - Supabase's built-in email provider has a very low email limit. Email confirmation was disabled temporarily for development testing.
 - Re-enable confirmation and configure custom SMTP before describing the app as production-ready.

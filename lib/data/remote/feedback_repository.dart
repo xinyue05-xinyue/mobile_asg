@@ -84,15 +84,22 @@ class FeedbackRepository {
     required String status,
     required String response,
   }) async {
-    await client
-        .from('feedback')
-        .update({
-          'status': status,
-          'admin_response': response.trim().isEmpty ? null : response.trim(),
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', id);
+    await client.rpc(
+      'review_feedback',
+      params: {
+        'p_feedback_id': id,
+        'p_status': status,
+        'p_response': response.trim(),
+      },
+    );
   }
+
+  Future<List<Map<String, dynamic>>> getReplies(String id) async => await client
+      .from('feedback_replies')
+      .select('id, message, created_at, legacy')
+      .eq('feedback_id', id)
+      .order('created_at')
+      .order('id');
 
   Future<String> createAttachmentUrl(String path) => client.storage
       .from(attachmentBucket)

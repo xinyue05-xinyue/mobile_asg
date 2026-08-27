@@ -244,14 +244,15 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            ElevatedButton(
+            FilledButton.icon(
               onPressed: isSubmitting ? null : submit,
-              child: isSubmitting
+              icon: isSubmitting
                   ? const SizedBox.square(
                       dimension: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Submit application'),
+                  : const Icon(Icons.send_outlined),
+              label: const Text('Submit application'),
             ),
           ],
         ),

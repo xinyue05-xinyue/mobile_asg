@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/event_schedule.dart';
 
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -18,6 +19,56 @@ class EventRegistrationsScreen extends StatefulWidget {
 
 class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
   late Future<List<EventRegistration>> registrations;
+  bool verifying = false;
+
+  Future<void> verifyManually(EventRegistration registration) async {
+    if (verifying || !canVerify || registration.status != 'registered') return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm completed donation'),
+        content: Text(
+          '${registration.donorName}\nBlood type: ${registration.bloodType ?? "Not set"}\n\nConfirm the donor’s identity and that blood donation is complete. This awards points and updates eligibility; attendance alone is not enough.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm donation'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => verifying = true);
+    try {
+      final client = SupabaseService.client;
+      if (client == null) throw StateError('Please log in again.');
+      await EventRegistrationRepository(
+        client,
+      ).verifyQr(eventId: widget.event.id, donorId: registration.donorId);
+      if (!mounted) return;
+      setState(() {
+        registrations = loadRegistrations();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Donation verified. Points and eligibility updated.'),
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to verify donation: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => verifying = false);
+    }
+  }
 
   @override
   void initState() {
@@ -45,7 +96,9 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
       ),
     );
     if (mounted) {
-      setState(() => registrations = loadRegistrations());
+      setState(() {
+        registrations = loadRegistrations();
+      });
     }
   }
 
@@ -83,27 +136,30 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
             );
           }
           final items = snapshot.data ?? const [];
-          if (items.isEmpty) {
-            return const Center(child: Text('No donor registrations yet.'));
-          }
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            itemCount: items.length + (canVerify ? 0 : 1),
+            itemCount: items.length + 1,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              if (!canVerify && index == 0) {
+              if (index == 0) {
                 return Card(
                   color: Theme.of(context).colorScheme.secondaryContainer,
                   child: ListTile(
                     leading: const Icon(Icons.info_outline),
-                    title: Text(verificationMessage),
+                    title: Text(
+                      eventSchedule(widget.event.startsAt, widget.event.endsAt),
+                    ),
                     subtitle: Text(
-                      'Event starts: ${widget.event.startsAt.toString().substring(0, 16)}',
+                      !canVerify
+                          ? verificationMessage
+                          : items.isEmpty
+                          ? 'No donor registrations yet.'
+                          : 'Verify only after the donor has completed donation.',
                     ),
                   ),
                 );
               }
-              final registration = items[index - (canVerify ? 0 : 1)];
+              final registration = items[index - 1];
               return Card(
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(16),
@@ -114,7 +170,14 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
                   subtitle: Text('Status: ${registration.status}'),
                   trailing: registration.status == 'attended'
                       ? const Icon(Icons.verified, color: Colors.green)
-                      : const Icon(Icons.qr_code_scanner),
+                      : registration.status == 'registered'
+                      ? FilledButton(
+                          onPressed: canVerify && !verifying
+                              ? () => verifyManually(registration)
+                              : null,
+                          child: const Text('Verify'),
+                        )
+                      : null,
                 ),
               );
             },

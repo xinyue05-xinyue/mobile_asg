@@ -41,7 +41,7 @@ class AdminDashboardRepository {
     if (user == null) throw const AuthException('Please log in again.');
     final eventRows = await client
         .from('donation_events')
-        .select('id, title, starts_at')
+        .select('id, title, starts_at, ends_at')
         .eq('created_by', user.id);
     if (eventRows.isEmpty) return const [];
     final events = {
@@ -49,6 +49,7 @@ class AdminDashboardRepository {
         row['id']! as String: (
           title: row['title']! as String,
           startsAt: DateTime.parse(row['starts_at']! as String).toLocal(),
+          endsAt: DateTime.parse(row['ends_at']! as String).toLocal(),
         ),
     };
     final rows = await client
@@ -68,6 +69,7 @@ class AdminDashboardRepository {
         bloodType: donor?['blood_type'] as String?,
         eventTitle: event.title,
         eventStartsAt: event.startsAt,
+        eventEndsAt: event.endsAt,
         status: row['status']! as String,
         registeredAt: DateTime.parse(row['registered_at']! as String).toLocal(),
       );
@@ -80,6 +82,7 @@ class AdminRegistrationDetail {
     required this.donorName,
     required this.eventTitle,
     required this.eventStartsAt,
+    required this.eventEndsAt,
     required this.status,
     required this.registeredAt,
     this.bloodType,
@@ -89,6 +92,7 @@ class AdminRegistrationDetail {
   final String? bloodType;
   final String eventTitle;
   final DateTime eventStartsAt;
+  final DateTime eventEndsAt;
   final String status;
   final DateTime registeredAt;
 }

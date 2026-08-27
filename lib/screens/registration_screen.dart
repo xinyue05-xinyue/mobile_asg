@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/remote/auth_repository.dart';
+import '../data/remote/auth_error_message.dart';
 import '../data/remote/supabase_service.dart';
 import 'donor/donor_shell.dart';
 import 'login_screen.dart';
@@ -32,6 +32,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }
 
   Future<void> register() async {
+    if (isLoading) return;
     if (!(formKey.currentState?.validate() ?? false)) return;
     final client = SupabaseService.client;
     if (client == null) {
@@ -67,11 +68,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           (_) => false,
         );
       }
-    } on AuthException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => isLoading = false);
     }

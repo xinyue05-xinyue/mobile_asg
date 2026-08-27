@@ -24,6 +24,12 @@ class UserFeedback {
   final List<String> attachmentPaths;
   final List<String> attachmentNames;
   final String? adminResponse;
+  String get statusLabel => switch (status) {
+    'open' => 'Submitted',
+    'reviewed' => 'Reviewed',
+    'resolved' => 'Resolved',
+    _ => status,
+  };
 
   factory UserFeedback.fromMap(Map<String, Object?> map) {
     final user = map['user'] as Map<String, Object?>?;

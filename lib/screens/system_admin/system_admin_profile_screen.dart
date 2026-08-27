@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/profile_actions.dart';
 
 import '../../data/remote/profile_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -29,7 +30,6 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
 
   Future<void> edit(DonorProfile current) async {
     final name = TextEditingController(text: current.fullName);
-    final phone = TextEditingController(text: current.phone ?? '');
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -40,12 +40,6 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: 'Full name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Contact phone'),
             ),
           ],
         ),
@@ -66,21 +60,38 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
       ),
     );
     if (saved == true) {
-      final client = SupabaseService.client!;
-      await ProfileRepository(
-        client,
-      ).updateBasicProfile(fullName: name.text.trim(), phone: phone.text);
-      if (mounted) setState(() => profile = loadProfile());
+      try {
+        final client = SupabaseService.client!;
+        await ProfileRepository(
+          client,
+        ).updateBasicProfile(fullName: name.text.trim());
+        if (mounted) {
+          setState(() {
+            profile = loadProfile();
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to save profile. Please try again.'),
+            ),
+          );
+        }
+      }
     }
     name.dispose();
-    phone.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final email = SupabaseService.client?.auth.currentUser?.email ?? 'Not set';
     return Scaffold(
-      appBar: AppBar(title: const Text('Administrator profile')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text('Administrator profile'),
+        actions: const [ProfileLogoutButton()],
+      ),
       body: FutureBuilder<DonorProfile>(
         future: profile,
         builder: (context, snapshot) {
@@ -88,8 +99,12 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Unable to load profile: ${snapshot.error}'),
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const Text('Unable to load profile. Please try again.'),
+                const ProfileActions(isSystemAdmin: true),
+              ],
             );
           }
           final value = snapshot.data!;
@@ -111,25 +126,10 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const Text('System administrator'),
+                      const SizedBox(height: 6),
+                      Text(email, textAlign: TextAlign.center),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.email_outlined),
-                      title: const Text('Email'),
-                      subtitle: Text(email),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.phone_outlined),
-                      title: const Text('Contact phone'),
-                      subtitle: Text(value.phone ?? 'Not set'),
-                    ),
-                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -138,6 +138,8 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit profile'),
               ),
+              const SizedBox(height: 24),
+              const ProfileActions(isSystemAdmin: true),
             ],
           );
         },

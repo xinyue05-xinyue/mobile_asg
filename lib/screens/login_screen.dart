@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/remote/auth_repository.dart';
+import '../data/remote/auth_error_message.dart';
 import '../data/remote/supabase_service.dart';
-import '../models/user_role.dart';
 import 'registration_screen.dart';
 import 'role_home.dart';
 
@@ -28,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> login() async {
+    if (isLoading) return;
     if (emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -36,27 +36,35 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    final client = SupabaseService.client;
+    if (client == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Login is unavailable. Configure SUPABASE_URL and '
+            'SUPABASE_PUBLISHABLE_KEY, then rebuild the app.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => isLoading = true);
     try {
-      var role = UserRole.donor;
-      final client = SupabaseService.client;
-      if (client != null) {
-        role = await AuthRepository(client).signIn(
-          email: emailController.text.trim(),
-          password: passwordController.text,
-        );
-      }
+      final role = await AuthRepository(client).signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
       if (!mounted) return;
       final destination = homeForRole(role);
       await Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => destination),
       );
-    } on AuthException catch (error) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -122,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (!SupabaseService.isConfigured) ...[
               const SizedBox(height: 16),
               const Text(
-                'Local demo mode: Supabase is not configured yet.',
+                'Login unavailable: Supabase is not configured.',
                 textAlign: TextAlign.center,
               ),
             ],

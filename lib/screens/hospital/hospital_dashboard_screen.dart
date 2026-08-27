@@ -6,10 +6,7 @@ import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_request.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
-import '../login_screen.dart';
-import '../feedback_screen.dart';
 import '../statistics_screen.dart';
-import '../staff_profile_screen.dart';
 import 'create_emergency_screen.dart';
 import 'emergency_responses_screen.dart';
 
@@ -137,50 +134,13 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
     if (mounted) await refresh();
   }
 
-  Future<void> signOut() async {
-    await SupabaseService.client?.auth.signOut();
-    if (!mounted) return;
-    await Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Hospital Portal'),
-        actions: [
-          IconButton(
-            tooltip: 'Send feedback',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
-            ),
-            icon: const Icon(Icons.feedback_outlined),
-          ),
-          IconButton(
-            tooltip: 'My profile',
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const StaffProfileScreen(roleLabel: 'Hospital staff'),
-              ),
-            ),
-          ),
-          const StatisticsIconButton(),
-          const NotificationButton(),
-          IconButton(
-            onPressed: signOut,
-            tooltip: 'Log out',
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+        actions: const [StatisticsIconButton(), NotificationButton()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: createRequest,

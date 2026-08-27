@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/event_schedule.dart';
 
 import '../../data/remote/admin_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -50,7 +51,7 @@ class AdminRegistrationsOverviewScreen extends StatelessWidget {
                   title: Text(item.donorName),
                   subtitle: Text(
                     '${item.eventTitle}\n'
-                    '${dateLabel(item.eventStartsAt)} • Status: ${item.status}',
+                    '${eventSchedule(item.eventStartsAt, item.eventEndsAt)}\nStatus: ${item.status}',
                   ),
                   isThreeLine: true,
                 ),

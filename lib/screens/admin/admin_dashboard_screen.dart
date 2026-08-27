@@ -4,10 +4,7 @@ import '../../data/remote/admin_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
-import '../login_screen.dart';
-import '../feedback_screen.dart';
 import '../statistics_screen.dart';
-import '../staff_profile_screen.dart';
 import 'manage_centres_screen.dart';
 import 'manage_events_screen.dart';
 import 'admin_registrations_overview_screen.dart';
@@ -62,50 +59,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (mounted) await refresh();
   }
 
-  Future<void> signOut() async {
-    await SupabaseService.client?.auth.signOut();
-    if (!mounted) return;
-    await Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Organisation Admin'),
-        actions: [
-          IconButton(
-            tooltip: 'Send feedback',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
-            ),
-            icon: const Icon(Icons.feedback_outlined),
-          ),
-          IconButton(
-            tooltip: 'My profile',
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    const StaffProfileScreen(roleLabel: 'Organisation admin'),
-              ),
-            ),
-          ),
-          const StatisticsIconButton(),
-          const NotificationButton(),
-          IconButton(
-            onPressed: signOut,
-            tooltip: 'Log out',
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+        actions: const [StatisticsIconButton(), NotificationButton()],
       ),
       body: FutureBuilder<AdminDashboardSummary>(
         future: summary,

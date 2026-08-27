@@ -64,7 +64,7 @@ class _RewardStoreScreenState extends State<RewardStoreScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     setState(() => redeemingId = item.id);
     try {
@@ -98,7 +98,11 @@ class _RewardStoreScreenState extends State<RewardStoreScreen> {
           ],
         ),
       );
-      if (mounted) setState(() => data = loadData());
+      if (mounted) {
+        setState(() {
+          data = loadData();
+        });
+      }
     } on PostgrestException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(

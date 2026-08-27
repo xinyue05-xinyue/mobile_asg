@@ -10,6 +10,8 @@ class DonationEvent {
     this.latitude,
     this.longitude,
     this.imagePath,
+    this.createdBy,
+    this.organiserName,
   });
 
   final String id;
@@ -22,6 +24,22 @@ class DonationEvent {
   final double? latitude;
   final double? longitude;
   final String? imagePath;
+  final String? createdBy;
+  final String? organiserName;
+
+  bool registrationOpenAt(DateTime now) =>
+      status == 'upcoming' && endsAt.isAfter(now);
+
+  bool eligibleOnEventDate(DateTime? nextEligibleDate) {
+    if (nextEligibleDate == null) return true;
+    final eventDay = DateTime(startsAt.year, startsAt.month, startsAt.day);
+    final eligibleDay = DateTime(
+      nextEligibleDate.year,
+      nextEligibleDate.month,
+      nextEligibleDate.day,
+    );
+    return !eventDay.isBefore(eligibleDay);
+  }
 
   Map<String, Object?> toMap() => {
     'id': id,
@@ -34,6 +52,8 @@ class DonationEvent {
     'latitude': latitude,
     'longitude': longitude,
     'image_path': imagePath,
+    'created_by': createdBy,
+    'organiser_name': organiserName,
   };
 
   factory DonationEvent.fromMap(Map<String, Object?> map) => DonationEvent(
@@ -47,5 +67,7 @@ class DonationEvent {
     latitude: (map['latitude'] as num?)?.toDouble(),
     longitude: (map['longitude'] as num?)?.toDouble(),
     imagePath: map['image_path'] as String?,
+    createdBy: map['created_by'] as String?,
+    organiserName: map['organiser_name'] as String?,
   );
 }

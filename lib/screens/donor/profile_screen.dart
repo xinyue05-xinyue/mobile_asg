@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/profile_actions.dart';
 
 import '../../data/remote/profile_repository.dart';
 import '../../data/remote/role_request_repository.dart';
@@ -6,8 +7,6 @@ import '../../data/remote/supabase_service.dart';
 import '../../models/profile_overview.dart';
 import '../../models/donor_level.dart';
 import '../../models/role_request.dart';
-import '../login_screen.dart';
-import '../feedback_screen.dart';
 import 'edit_profile_screen.dart';
 import 'history_screens.dart';
 import 'role_application_screen.dart';
@@ -71,37 +70,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(refresh);
   }
 
-  Future<void> signOut() async {
-    await SupabaseService.client?.auth.signOut();
-    if (!mounted) return;
-    await Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('My Profile'),
-        actions: [
-          IconButton(
-            tooltip: 'Send feedback',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
-            ),
-            icon: const Icon(Icons.feedback_outlined),
-          ),
-          IconButton(
-            onPressed: signOut,
-            tooltip: 'Log out',
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+        actions: const [ProfileLogoutButton()],
       ),
       body: overview == null
           ? const Center(child: Text('Profile requires a Supabase login.'))
@@ -203,39 +178,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onRedeem: openRewards,
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      'Personal information',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.phone_outlined),
-                            title: const Text('Phone'),
-                            subtitle: Text(value.profile.phone ?? 'Not set'),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.cake_outlined),
-                            title: const Text('Date of birth'),
-                            subtitle: Text(
-                              dateLabel(value.profile.dateOfBirth),
-                            ),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.notifications_outlined),
-                            title: const Text('Notifications'),
-                            subtitle: Text(
-                              value.profile.notificationsEnabled
-                                  ? 'Enabled'
-                                  : 'Disabled',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     Card(
                       child: Column(
                         children: [
@@ -287,6 +229,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 8),
                     _RoleRequests(requestFuture: requests),
+                    const SizedBox(height: 24),
+                    const ProfileActions(),
                   ],
                 );
               },

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../widgets/event_schedule.dart';
+import '../../widgets/institution_details_tile.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -25,6 +27,7 @@ class _EventsScreenState extends State<EventsScreen> {
   late Future<_EventData> data;
   String? registeringEventId;
   bool registeredExpanded = false;
+  bool accountAvailable = false;
 
   @override
   void initState() {
@@ -41,14 +44,23 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<_EventData> loadData() async {
     final events = await syncService.loadEvents();
     final client = SupabaseService.client;
-    final registrationStatuses = client == null
-        ? <String, String>{}
-        : await EventRegistrationRepository(client).getMyRegistrationStatuses();
-    final nextEligibleDate = client == null
-        ? null
-        : (await ProfileRepository(
-            client,
-          ).getCurrentProfile()).nextEligibleDate;
+    var registrationStatuses = <String, String>{};
+    DateTime? nextEligibleDate;
+    accountAvailable = false;
+    if (client != null) {
+      try {
+        registrationStatuses = await EventRegistrationRepository(
+          client,
+        ).getMyRegistrationStatuses().timeout(const Duration(seconds: 10));
+        nextEligibleDate =
+            (await ProfileRepository(client).getCurrentProfile().timeout(
+              const Duration(seconds: 10),
+            )).nextEligibleDate;
+        accountAvailable = true;
+      } catch (_) {
+        registrationStatuses = {};
+      }
+    }
     final now = DateTime.now();
     final visibleEvents = events.where((event) {
       if (event.status != 'upcoming') return false;
@@ -84,18 +96,7 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   bool isEligibleForEvent(DonationEvent event, DateTime? nextEligibleDate) {
-    if (nextEligibleDate == null) return true;
-    final eventDay = DateTime(
-      event.startsAt.year,
-      event.startsAt.month,
-      event.startsAt.day,
-    );
-    final eligibleDay = DateTime(
-      nextEligibleDate.year,
-      nextEligibleDate.month,
-      nextEligibleDate.day,
-    );
-    return !eventDay.isBefore(eligibleDay);
+    return event.eligibleOnEventDate(nextEligibleDate);
   }
 
   String shortDate(DateTime value) {
@@ -107,192 +108,216 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<void> showEventDetails(
     DonationEvent event, {
     required String? registrationStatus,
+    required DateTime? nextEligibleDate,
   }) async {
     final existingReminder = await EventReminderService.instance.reminderFor(
       event.id,
     );
     if (!mounted) return;
-    final qrEventId = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
+    final eligible =
+        accountAvailable && isEligibleForEvent(event, nextEligibleDate);
+    final ended = !event.registrationOpenAt(DateTime.now());
+    final qrEventId = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (sheetContext) => Scaffold(
+          appBar: AppBar(title: Text(event.title)),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.bloodtype_outlined, size: 36),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      event.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                ],
-              ),
-              if (event.imagePath case final path?) ...[
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    SupabaseService.client!.storage
-                        .from('event-images')
-                        .getPublicUrl(path),
-                    height: 210,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.location_on_outlined),
-                title: const Text('Venue'),
-                subtitle: Text(event.venue),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_month_outlined),
-                title: const Text('Date and time'),
-                subtitle: Text(
-                  '${dateLabel(event.startsAt)} – ${timeLabel(event.endsAt)}',
-                ),
-              ),
-              if (event.description case final description?) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'About this event',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 6),
-                Text(description),
-              ],
-              if (event.latitude != null && event.longitude != null) ...[
-                const SizedBox(height: 18),
-                Text(
-                  'Event location',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 220,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: FlutterMap(
-                      options: MapOptions(
-                        initialCenter: LatLng(
-                          event.latitude!,
-                          event.longitude!,
+                  Row(
+                    children: [
+                      const Icon(Icons.bloodtype_outlined, size: 36),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          event.title,
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                        initialZoom: 15,
                       ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.mobile_asg',
-                        ),
-                        MarkerLayer(
-                          markers: [
-                            Marker(
-                              point: LatLng(event.latitude!, event.longitude!),
-                              width: 48,
-                              height: 48,
-                              child: const Icon(
-                                Icons.location_on,
-                                size: 46,
-                                color: Colors.red,
-                              ),
+                    ],
+                  ),
+                  if (event.imagePath case final path?) ...[
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        SupabaseService.client!.storage
+                            .from('event-images')
+                            .getPublicUrl(path),
+                        height: 210,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  InstitutionDetailsTile(
+                    ownerId: event.createdBy,
+                    label: 'Organised by',
+                    cachedName: event.organiserName,
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('Venue'),
+                    subtitle: Text(event.venue),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_month_outlined),
+                    title: const Text('Date and time'),
+                    subtitle: Text(eventSchedule(event.startsAt, event.endsAt)),
+                  ),
+                  if (event.description case final description?) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'About this event',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(description),
+                  ],
+                  if (event.latitude != null && event.longitude != null) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      'Event location',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 220,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(
+                              event.latitude!,
+                              event.longitude!,
+                            ),
+                            initialZoom: 15,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.example.mobile_asg',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: LatLng(
+                                    event.latitude!,
+                                    event.longitude!,
+                                  ),
+                                  width: 48,
+                                  height: 48,
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    size: 46,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const RichAttributionWidget(
+                              attributions: [
+                                TextSourceAttribution(
+                                  'OpenStreetMap contributors',
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const RichAttributionWidget(
-                          attributions: [
-                            TextSourceAttribution('OpenStreetMap contributors'),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => openDirections(event),
-                    icon: const Icon(Icons.directions_outlined),
-                    label: const Text('Open directions'),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed:
-                      registrationStatus != null || registeringEventId != null
-                      ? null
-                      : () {
-                          Navigator.pop(sheetContext);
-                          confirmRegistration(event);
-                        },
-                  icon: Icon(
-                    registrationStatus != null
-                        ? Icons.check
-                        : Icons.event_available,
-                  ),
-                  label: Text(
-                    registrationStatus == 'attended'
-                        ? 'Attendance verified'
-                        : registrationStatus != null
-                        ? 'Already registered'
-                        : 'Register',
-                  ),
-                ),
-              ),
-              if (registrationStatus == 'registered') ...[
-                const SizedBox(height: 10),
-                if (event.startsAt.isAfter(DateTime.now())) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => openDirections(event),
+                        icon: const Icon(Icons.directions_outlined),
+                        label: const Text('Open directions'),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        chooseReminder(event);
-                      },
-                      icon: const Icon(Icons.alarm_add_outlined),
+                    child: FilledButton.icon(
+                      onPressed:
+                          registrationStatus != null ||
+                              registeringEventId != null ||
+                              !eligible ||
+                              ended
+                          ? null
+                          : () {
+                              Navigator.pop(sheetContext);
+                              confirmRegistration(event);
+                            },
+                      icon: Icon(
+                        registrationStatus != null
+                            ? Icons.check
+                            : Icons.event_available,
+                      ),
                       label: Text(
-                        existingReminder == null
-                            ? 'Set event reminder'
-                            : 'Reminder: ${dateLabel(existingReminder)}',
+                        registrationStatus == 'attended'
+                            ? 'Attendance verified'
+                            : registrationStatus != null
+                            ? 'Already registered'
+                            : ended
+                            ? 'Registration closed'
+                            : !accountAvailable
+                            ? 'Unavailable'
+                            : !eligible
+                            ? 'Not eligible'
+                            : 'Register',
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: event.startsAt.isAfter(DateTime.now())
-                        ? null
-                        : () => Navigator.pop(sheetContext, event.id),
-                    icon: const Icon(Icons.qr_code),
-                    label: Text(
-                      event.startsAt.isAfter(DateTime.now())
-                          ? 'QR available when event starts'
-                          : 'Show attendance QR',
+                  if (registrationStatus == 'registered') ...[
+                    const SizedBox(height: 10),
+                    if (event.startsAt.isAfter(DateTime.now())) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            chooseReminder(event);
+                          },
+                          icon: const Icon(Icons.alarm_add_outlined),
+                          label: Text(
+                            existingReminder == null
+                                ? 'Set event reminder'
+                                : 'Reminder: ${dateLabel(existingReminder)}',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: event.startsAt.isAfter(DateTime.now())
+                            ? null
+                            : () => Navigator.pop(sheetContext, event.id),
+                        icon: const Icon(Icons.qr_code),
+                        label: Text(
+                          event.startsAt.isAfter(DateTime.now())
+                              ? 'QR available when event starts'
+                              : 'Show attendance QR',
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -337,6 +362,13 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Future<void> confirmRegistration(DonationEvent event) async {
+    if (!accountAvailable) return;
+    if (!event.registrationOpenAt(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration is closed for this event.')),
+      );
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -388,6 +420,7 @@ class _EventsScreenState extends State<EventsScreen> {
     DonationEvent event, {
     bool afterRegistration = false,
   }) async {
+    if (!event.startsAt.isAfter(DateTime.now())) return;
     if (!mounted) return;
     final existing = await EventReminderService.instance.reminderFor(event.id);
     if (!mounted) return;
@@ -444,6 +477,7 @@ class _EventsScreenState extends State<EventsScreen> {
     if (choice == _ReminderChoice.cancel) {
       await EventReminderService.instance.cancel(event.id);
       if (!mounted) return;
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Event reminder cancelled.')),
       );
@@ -466,6 +500,7 @@ class _EventsScreenState extends State<EventsScreen> {
         reminderAt: reminderAt,
       );
       if (!mounted) return;
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Reminder set for ${dateLabel(reminderAt)}.')),
       );
@@ -528,7 +563,9 @@ class _EventsScreenState extends State<EventsScreen> {
     required DateTime? nextEligibleDate,
   }) {
     final registered = registrationStatus != null;
-    final eligible = isEligibleForEvent(event, nextEligibleDate);
+    final eligible =
+        accountAvailable && isEligibleForEvent(event, nextEligibleDate);
+    final ended = !event.registrationOpenAt(DateTime.now());
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -562,11 +599,14 @@ class _EventsScreenState extends State<EventsScreen> {
                 const Icon(Icons.schedule, size: 18),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(
-                    '${dateLabel(event.startsAt)} – ${timeLabel(event.endsAt)}',
-                  ),
+                  child: Text(eventSchedule(event.startsAt, event.endsAt)),
                 ),
               ],
+            ),
+            InstitutionDetailsTile(
+              ownerId: event.createdBy,
+              label: 'Organised by',
+              cachedName: event.organiserName,
             ),
             if (registered && event.startsAt.isAfter(DateTime.now()))
               FutureBuilder<DateTime?>(
@@ -641,6 +681,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 TextButton(
                   onPressed: () => showEventDetails(
                     event,
+                    nextEligibleDate: nextEligibleDate,
                     registrationStatus: registrationStatus,
                   ),
                   child: const Text('View details'),
@@ -648,7 +689,10 @@ class _EventsScreenState extends State<EventsScreen> {
                 const Spacer(),
                 FilledButton.icon(
                   onPressed:
-                      registered || !eligible || registeringEventId != null
+                      registered ||
+                          !eligible ||
+                          ended ||
+                          registeringEventId != null
                       ? null
                       : () => confirmRegistration(event),
                   icon: registeringEventId == event.id
@@ -662,6 +706,10 @@ class _EventsScreenState extends State<EventsScreen> {
                         ? 'Attended'
                         : registered
                         ? 'Registered'
+                        : ended
+                        ? 'Registration closed'
+                        : !accountAvailable
+                        ? 'Unavailable'
                         : !eligible
                         ? 'Not eligible'
                         : 'Register',
@@ -734,6 +782,9 @@ class _EventsScreenState extends State<EventsScreen> {
                 Card(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: ExpansionTile(
+                    enabled: accountAvailable,
+                    shape: const Border(),
+                    collapsedShape: const Border(),
                     initiallyExpanded: registeredExpanded,
                     onExpansionChanged: (expanded) =>
                         setState(() => registeredExpanded = expanded),
@@ -764,6 +815,15 @@ class _EventsScreenState extends State<EventsScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                if (!accountAvailable)
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        'Read-only view: account eligibility could not be checked. Connect to the internet and reopen Events to register or view your registrations. Cached events may be out of date.',
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
                     Text(

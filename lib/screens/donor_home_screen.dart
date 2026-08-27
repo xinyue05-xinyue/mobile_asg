@@ -6,6 +6,7 @@ import '../models/profile_overview.dart';
 import '../models/donor_level.dart';
 import '../widgets/notification_button.dart';
 import 'donor/donor_emergency_screen.dart';
+import 'donor/history_screens.dart';
 import 'statistics_screen.dart';
 
 class DonorHomeScreen extends StatefulWidget {
@@ -92,6 +93,13 @@ class _HomeContent extends StatelessWidget {
     final firstName = profile?.fullName.trim().split(RegExp(r'\s+')).first;
     final points = overview?.rewardPoints ?? 0;
     final donationCount = overview?.donations.length ?? 0;
+    void openDonations() => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            DonationHistoryScreen(donations: overview?.donations ?? const []),
+      ),
+    );
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -155,7 +163,7 @@ class _HomeContent extends StatelessWidget {
               child: _MetricCard(
                 label: 'Donations',
                 value: '${overview?.donations.length ?? 0}',
-                onTap: () => onTabSelected(3),
+                onTap: openDonations,
               ),
             ),
             const SizedBox(width: 8),
@@ -163,7 +171,14 @@ class _HomeContent extends StatelessWidget {
               child: _MetricCard(
                 label: 'Points',
                 value: '$points',
-                onTap: () => onTabSelected(3),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RewardHistoryScreen(
+                      rewards: overview?.rewards ?? const [],
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -210,7 +225,7 @@ class _HomeContent extends StatelessWidget {
             HomeMenuItem(
               icon: Icons.history,
               title: 'My Donations',
-              onTap: () => onTabSelected(3),
+              onTap: openDonations,
             ),
           ],
         ),

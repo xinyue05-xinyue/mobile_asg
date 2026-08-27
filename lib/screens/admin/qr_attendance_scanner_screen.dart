@@ -6,6 +6,7 @@ import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_event.dart';
 import '../../models/event_registration.dart';
+import '../../models/attendance_qr.dart';
 
 class QrAttendanceScannerScreen extends StatefulWidget {
   const QrAttendanceScannerScreen({super.key, required this.event});
@@ -36,6 +37,7 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
   }
 
   Future<bool> confirmDonor(EventRegistration registration) async {
+    if (!mounted) return false;
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -94,33 +96,24 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
   }
 
   Future<void> detected(BarcodeCapture capture) async {
-    if (processing || capture.barcodes.isEmpty) return;
+    if (!mounted || processing || capture.barcodes.isEmpty) return;
     final value = capture.barcodes.first.rawValue;
-    final prefix = 'mydarah:event:${widget.event.id}:donor:';
-    if (value == null || !value.startsWith(prefix)) {
-      setState(() => processing = true);
-      await controller.stop();
-      await showError('This QR does not belong to ${widget.event.title}.');
-      return resumeScanning();
-    }
-
-    final donorId = value.substring(prefix.length).trim();
-    if (donorId.isEmpty) return;
     setState(() => processing = true);
-    await controller.stop();
-
-    final client = SupabaseService.client;
-    if (client == null) {
-      await showError('Supabase is not configured.');
-      return resumeScanning();
-    }
-
     try {
+      await controller.stop();
+      if (!mounted) return;
+      final donorId = AttendanceQr.donorForEvent(value, widget.event.id);
+      final client = SupabaseService.client;
+      if (client == null) {
+        await showError('Please log in again.');
+        return;
+      }
       final repository = EventRegistrationRepository(client);
       final registration = await repository.getForEventAndDonor(
         eventId: widget.event.id,
         donorId: donorId,
       );
+      if (!mounted) return;
       if (registration == null) {
         await showError('This donor is not registered for this event.');
       } else if (registration.status == 'attended') {
@@ -128,6 +121,7 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
       } else if (registration.status != 'registered') {
         await showError('This registration is ${registration.status}.');
       } else if (await confirmDonor(registration)) {
+        if (!mounted) return;
         await repository.verifyQr(eventId: widget.event.id, donorId: donorId);
         verifiedCount++;
         if (mounted) {
@@ -140,12 +134,17 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
           );
         }
       }
+    } on FormatException catch (error) {
+      await showError(error.message);
     } on PostgrestException catch (error) {
       await showError(error.message);
-    } catch (error) {
-      await showError('Unable to verify QR: $error');
+    } catch (_) {
+      await showError(
+        'Unable to complete verification. Check your connection, then check the registration status before trying again. You can also return to the list and use Verify.',
+      );
+    } finally {
+      await resumeScanning();
     }
-    await resumeScanning();
   }
 
   Future<void> showError(String message) async {
@@ -167,8 +166,21 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
 
   Future<void> resumeScanning() async {
     if (!mounted) return;
-    setState(() => processing = false);
-    await controller.start();
+    try {
+      await controller.start();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Camera could not restart. Return to the donor list to verify manually.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => processing = false);
+    }
   }
 
   @override
@@ -184,14 +196,48 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MobileScanner(controller: controller, onDetect: detected),
+          MobileScanner(
+            controller: controller,
+            onDetect: detected,
+            errorBuilder: (context, error) => ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.no_photography_outlined, size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        error.errorCode ==
+                                MobileScannerErrorCode.permissionDenied
+                            ? 'Camera permission is denied. Allow camera access for MyDarah in your device settings, or verify manually.'
+                            : 'Camera is unavailable. You can still verify the donor manually.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () =>
+                            Navigator.pop(context, verifiedCount > 0),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Back to donor list'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 4),
-                borderRadius: BorderRadius.circular(20),
+            child: IgnorePointer(
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white, width: 4),
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),

@@ -7,10 +7,7 @@ import '../../data/remote/system_admin_repository.dart';
 import '../../models/role_request.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
-import '../login_screen.dart';
 import '../statistics_screen.dart';
-import 'system_admin_profile_screen.dart';
-import 'feedback_inbox_screen.dart';
 import 'user_directory_screen.dart';
 
 class SystemAdminDashboardScreen extends StatefulWidget {
@@ -142,16 +139,6 @@ class _SystemAdminDashboardScreenState
     }
   }
 
-  Future<void> signOut() async {
-    await SupabaseService.client?.auth.signOut();
-    if (!mounted) return;
-    await Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
   String dateLabel(DateTime value) {
     final day = value.day.toString().padLeft(2, '0');
     final month = value.month.toString().padLeft(2, '0');
@@ -174,33 +161,7 @@ class _SystemAdminDashboardScreenState
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('System Administration'),
-        actions: [
-          IconButton(
-            tooltip: 'Feedback inbox',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FeedbackInboxScreen()),
-            ),
-            icon: const Icon(Icons.feedback_outlined),
-          ),
-          IconButton(
-            tooltip: 'Administrator profile',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const SystemAdminProfileScreen(),
-              ),
-            ),
-            icon: const Icon(Icons.account_circle_outlined),
-          ),
-          const StatisticsIconButton(),
-          const NotificationButton(),
-          IconButton(
-            onPressed: signOut,
-            tooltip: 'Log out',
-            icon: const Icon(Icons.logout),
-          ),
-        ],
+        actions: const [StatisticsIconButton(), NotificationButton()],
       ),
       body: FutureBuilder<_SystemAdminData>(
         future: data,

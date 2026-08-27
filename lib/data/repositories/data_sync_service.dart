@@ -53,7 +53,9 @@ class DataSyncService {
     final remote = _remoteRepository;
     if (remote != null) {
       try {
-        final events = await remote.getEvents();
+        final events = await remote.getEvents().timeout(
+          const Duration(seconds: 10),
+        );
         await _localRepository.replaceEvents(events);
         await _preferences.setLastSyncAt(DateTime.now());
       } on Exception catch (error) {

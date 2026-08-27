@@ -19,6 +19,23 @@ class RemoteDataRepository {
         .select()
         .neq('status', 'cancelled')
         .order('starts_at');
+    final ownerIds = rows
+        .map((row) => row['created_by'] as String)
+        .toSet()
+        .toList();
+    if (ownerIds.isNotEmpty) {
+      final profiles = await client
+          .from('organisation_profiles')
+          .select('owner_id, display_name')
+          .inFilter('owner_id', ownerIds);
+      final names = {
+        for (final profile in profiles)
+          profile['owner_id']: profile['display_name'],
+      };
+      for (final row in rows) {
+        row['organiser_name'] = names[row['created_by']];
+      }
+    }
     return rows.map(DonationEvent.fromMap).toList();
   }
 }

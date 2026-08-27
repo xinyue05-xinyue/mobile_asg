@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/institution_details_tile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/remote/emergency_repository.dart';
@@ -130,6 +131,10 @@ class _DonorEmergencyScreenState extends State<DonorEmergencyScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text('Urgency: ${request.urgency.toUpperCase()}'),
+                        InstitutionDetailsTile(
+                          ownerId: request.hospitalId,
+                          label: 'Requested by',
+                        ),
                         Text('Respond before: ${dateLabel(request.deadline)}'),
                         const SizedBox(height: 12),
                         const Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/profile_actions.dart';
 
 import '../data/remote/organisation_profile_repository.dart';
 import '../data/remote/supabase_service.dart';
@@ -50,7 +51,11 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.roleLabel} Profile')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text('${widget.roleLabel} Profile'),
+        actions: const [ProfileLogoutButton()],
+      ),
       body: FutureBuilder<OrganisationProfile?>(
         future: profile,
         builder: (context, snapshot) {
@@ -58,8 +63,12 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Unable to load profile: ${snapshot.error}'),
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const Text('Unable to load profile. Please try again.'),
+                const ProfileActions(),
+              ],
             );
           }
           final value = snapshot.data;
@@ -132,6 +141,8 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit institutional profile'),
               ),
+              const SizedBox(height: 24),
+              const ProfileActions(),
             ],
           );
         },

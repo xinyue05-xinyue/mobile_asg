@@ -1,4 +1,6 @@
 import 'package:file_picker/file_picker.dart';
+import 'dart:async';
+import 'feedback_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,16 +21,25 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   bool submitting = false;
   List<FeedbackAttachment> attachments = [];
   late Future<List<UserFeedback>> feedback;
+  Timer? refreshTimer;
 
   @override
   void initState() {
     super.initState();
     feedback = load();
+    refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted && !submitting) {
+        setState(() {
+          feedback = load();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     message.dispose();
+    refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -179,11 +190,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           ),
           OutlinedButton.icon(
             onPressed: submitting ? null : pickAttachments,
-            icon: const Icon(Icons.attach_file),
-            label: Text('Add attachments (${attachments.length}/5)'),
+            icon: const Icon(Icons.upload_file_outlined),
+            label: const Text('Select supporting documents'),
           ),
-          const Text(
-            'Optional: PDF, JPG, PNG, WebP, DOC, or DOCX. Maximum 5 MB each.',
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              'Optional: upload up to 5 PDF, JPG, PNG, WebP, DOC, or DOCX files. Maximum 5 MB each.',
+            ),
           ),
           if (attachments.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -226,8 +240,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           FutureBuilder<List<UserFeedback>>(
             future: feedback,
             builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
+              if (snapshot.connectionState != ConnectionState.done &&
+                  !snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Text(
+                  'Unable to load feedback. Please check your connection.',
+                );
               }
               final items = snapshot.data ?? const [];
               if (items.isEmpty) {
@@ -238,10 +258,29 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     .map(
                       (item) => Card(
                         child: ListTile(
-                          title: Text(item.message),
+                          title: Text(
+                            item.message,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    FeedbackDetailScreen(item: item),
+                              ),
+                            );
+                            if (mounted) {
+                              setState(() {
+                                feedback = load();
+                              });
+                            }
+                          },
                           subtitle: Text(
                             '${item.category} • ${dateLabel(item.createdAt)}\n'
-                            'Status: ${item.status}'
+                            'Status: ${item.statusLabel}'
                             '${item.attachmentPaths.isEmpty ? '' : '\n${item.attachmentPaths.length} attachment${item.attachmentPaths.length == 1 ? '' : 's'}'}'
                             '${item.adminResponse == null ? '' : '\nAdmin: ${item.adminResponse}'}',
                           ),

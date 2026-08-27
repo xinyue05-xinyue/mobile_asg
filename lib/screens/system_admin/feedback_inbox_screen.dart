@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import '../../widgets/event_schedule.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/remote/feedback_repository.dart';
@@ -14,19 +16,58 @@ class FeedbackInboxScreen extends StatefulWidget {
 
 class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
   late Future<List<UserFeedback>> feedback;
+  Timer? timer;
+  bool reviewing = false;
 
   @override
   void initState() {
     super.initState();
     feedback = load();
+    timer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted && !reviewing) {
+        setState(() {
+          feedback = load();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
 
   Future<List<UserFeedback>> load() =>
       FeedbackRepository(SupabaseService.client!).getAll();
 
   Future<void> review(UserFeedback item) async {
+    if (reviewing) return;
+    reviewing = true;
+    List<Map<String, dynamic>> replies;
+    try {
+      replies = await FeedbackRepository(
+        SupabaseService.client!,
+      ).getReplies(item.id);
+    } catch (_) {
+      reviewing = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to load reply history. Check your connection and apply SQL migration 021.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) {
+      reviewing = false;
+      return;
+    }
     var status = item.status;
-    final response = TextEditingController(text: item.adminResponse ?? '');
+    final response = TextEditingController();
     final save = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -40,6 +81,20 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
                 Text('${item.userRole} • ${item.category}'),
                 const SizedBox(height: 12),
                 Text(item.message),
+                if (replies.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text('Previous replies'),
+                  for (final reply in replies)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('${reply['message']}'),
+                      subtitle: Text(
+                        eventDateTime(
+                          DateTime.parse(reply['created_at'] as String),
+                        ),
+                      ),
+                    ),
+                ],
                 if (item.attachmentPaths.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -64,7 +119,7 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
                   initialValue: status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: const [
-                    DropdownMenuItem(value: 'open', child: Text('Open')),
+                    DropdownMenuItem(value: 'open', child: Text('Submitted')),
                     DropdownMenuItem(
                       value: 'reviewed',
                       child: Text('Reviewed'),
@@ -82,8 +137,9 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
                   controller: response,
                   minLines: 2,
                   maxLines: 5,
+                  maxLength: 2000,
                   decoration: const InputDecoration(
-                    labelText: 'Response to user',
+                    labelText: 'Add a new reply (optional)',
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -104,12 +160,30 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
       ),
     );
     if (save == true) {
-      await FeedbackRepository(
-        SupabaseService.client!,
-      ).review(id: item.id, status: status, response: response.text);
-      if (mounted) setState(() => feedback = load());
+      try {
+        await FeedbackRepository(
+          SupabaseService.client!,
+        ).review(id: item.id, status: status, response: response.text);
+        if (mounted) {
+          setState(() {
+            feedback = load();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Feedback response saved.')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to save response. Please try again.'),
+            ),
+          );
+        }
+      }
     }
     response.dispose();
+    reviewing = false;
   }
 
   Future<void> openAttachment(String path) async {
@@ -137,7 +211,8 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
       body: FutureBuilder<List<UserFeedback>>(
         future: feedback,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          if (snapshot.connectionState != ConnectionState.done &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
@@ -149,32 +224,25 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
           if (items.isEmpty) {
             return const Center(child: Text('No feedback yet.'));
           }
-          return RefreshIndicator(
-            onRefresh: () async {
-              final refreshed = load();
-              setState(() => feedback = refreshed);
-              await refreshed;
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return Card(
-                  child: ListTile(
-                    onTap: () => review(item),
-                    leading: const Icon(Icons.feedback_outlined),
-                    title: Text(item.userName),
-                    subtitle: Text(
-                      '${item.userRole} • ${item.category}\n${item.message}',
-                    ),
-                    isThreeLine: true,
-                    trailing: Text(item.status),
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Card(
+                child: ListTile(
+                  onTap: () => review(item),
+                  leading: const Icon(Icons.feedback_outlined),
+                  title: Text(item.userName),
+                  subtitle: Text(
+                    '${item.userRole} • ${item.category}\n${item.message}',
                   ),
-                );
-              },
-            ),
+                  isThreeLine: true,
+                  trailing: Text(item.statusLabel),
+                ),
+              );
+            },
           );
         },
       ),

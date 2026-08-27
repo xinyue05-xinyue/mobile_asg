@@ -87,18 +87,12 @@ class ProfileRepository {
         .eq('id', user.id);
   }
 
-  Future<void> updateBasicProfile({
-    required String fullName,
-    required String phone,
-  }) async {
+  Future<void> updateBasicProfile({required String fullName}) async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');
     await client
         .from('profiles')
-        .update({
-          'full_name': fullName,
-          'phone': phone.trim().isEmpty ? null : phone.trim(),
-        })
+        .update({'full_name': fullName})
         .eq('id', user.id);
   }
 }

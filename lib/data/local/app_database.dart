@@ -13,7 +13,7 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     _database = await openDatabase(
       path.join(databasePath, 'my_darah.db'),
-      version: 5,
+      version: 6,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -50,6 +50,8 @@ class AppDatabase {
         latitude REAL,
         longitude REAL,
         image_path TEXT,
+        created_by TEXT,
+        organiser_name TEXT,
         synced_at TEXT NOT NULL
       )
     ''');
@@ -105,6 +107,14 @@ class AppDatabase {
       await _createGovernmentStats(database);
     }
     if (oldVersion < 4) await _createOfficialCentres(database);
+    if (oldVersion < 6) {
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN created_by TEXT',
+      );
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN organiser_name TEXT',
+      );
+    }
     if (oldVersion < 5) {
       await database.execute(
         'ALTER TABLE donation_events ADD COLUMN latitude REAL',

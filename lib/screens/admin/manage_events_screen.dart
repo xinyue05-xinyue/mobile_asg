@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/event_schedule.dart';
 
 import '../../data/remote/admin_event_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -138,7 +139,11 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
                         children: [
                           const Icon(Icons.calendar_month_outlined, size: 19),
                           const SizedBox(width: 8),
-                          Text(dateLabel(event.startsAt)),
+                          Expanded(
+                            child: Text(
+                              eventSchedule(event.startsAt, event.endsAt),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
