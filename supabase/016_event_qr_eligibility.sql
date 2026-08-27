@@ -21,7 +21,7 @@ begin
   from public.donation_events
   where id = p_event_id
     and status = 'upcoming'
-    and starts_at > now();
+    and ends_at > now();
 
   if not found then
     raise exception 'This event is no longer available for registration';

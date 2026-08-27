@@ -5,6 +5,7 @@ import '../../data/remote/supabase_service.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
 import '../login_screen.dart';
+import '../feedback_screen.dart';
 import '../statistics_screen.dart';
 import '../staff_profile_screen.dart';
 import 'manage_centres_screen.dart';
@@ -78,6 +79,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text('Organisation Admin'),
         actions: [
+          IconButton(
+            tooltip: 'Send feedback',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
+            ),
+            icon: const Icon(Icons.feedback_outlined),
+          ),
           IconButton(
             tooltip: 'My profile',
             icon: const Icon(Icons.person_outline),

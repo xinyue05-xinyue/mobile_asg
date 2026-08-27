@@ -10,6 +10,7 @@ import '../../widgets/signed_in_identity_card.dart';
 import '../login_screen.dart';
 import '../statistics_screen.dart';
 import 'system_admin_profile_screen.dart';
+import 'feedback_inbox_screen.dart';
 import 'user_directory_screen.dart';
 
 class SystemAdminDashboardScreen extends StatefulWidget {
@@ -174,6 +175,14 @@ class _SystemAdminDashboardScreenState
         automaticallyImplyLeading: false,
         title: const Text('System Administration'),
         actions: [
+          IconButton(
+            tooltip: 'Feedback inbox',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeedbackInboxScreen()),
+            ),
+            icon: const Icon(Icons.feedback_outlined),
+          ),
           IconButton(
             tooltip: 'Administrator profile',
             onPressed: () => Navigator.push(

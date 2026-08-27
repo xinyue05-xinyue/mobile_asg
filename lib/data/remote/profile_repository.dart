@@ -33,6 +33,7 @@ class ProfileRepository {
             'id, donation_date, verification_status, event_id, emergency_request_id',
           )
           .eq('donor_id', user.id)
+          .eq('verification_status', 'verified')
           .order('donation_date', ascending: false),
       client
           .from('reward_transactions')

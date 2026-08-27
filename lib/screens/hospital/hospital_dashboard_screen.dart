@@ -7,6 +7,7 @@ import '../../models/emergency_request.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
 import '../login_screen.dart';
+import '../feedback_screen.dart';
 import '../statistics_screen.dart';
 import '../staff_profile_screen.dart';
 import 'create_emergency_screen.dart';
@@ -153,6 +154,14 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
         automaticallyImplyLeading: false,
         title: const Text('Hospital Portal'),
         actions: [
+          IconButton(
+            tooltip: 'Send feedback',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
+            ),
+            icon: const Icon(Icons.feedback_outlined),
+          ),
           IconButton(
             tooltip: 'My profile',
             icon: const Icon(Icons.person_outline),

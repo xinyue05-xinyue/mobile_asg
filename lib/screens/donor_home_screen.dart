@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/remote/profile_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/profile_overview.dart';
+import '../models/donor_level.dart';
 import '../widgets/notification_button.dart';
 import 'donor/donor_emergency_screen.dart';
 import 'statistics_screen.dart';
@@ -85,18 +86,12 @@ class _HomeContent extends StatelessWidget {
     return 'From $day/$month/${date.year}';
   }
 
-  String rewardLevel(int points) {
-    if (points >= 1000) return 'Gold';
-    if (points >= 500) return 'Silver';
-    if (points >= 100) return 'Bronze';
-    return 'New donor';
-  }
-
   @override
   Widget build(BuildContext context) {
     final profile = overview?.profile;
     final firstName = profile?.fullName.trim().split(RegExp(r'\s+')).first;
     final points = overview?.rewardPoints ?? 0;
+    final donationCount = overview?.donations.length ?? 0;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
@@ -175,7 +170,7 @@ class _HomeContent extends StatelessWidget {
             Expanded(
               child: _MetricCard(
                 label: 'Level',
-                value: rewardLevel(points),
+                value: DonorLevel.name(donationCount, short: true),
                 onTap: () => onTabSelected(3),
               ),
             ),

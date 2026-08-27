@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/local/event_reminder_service.dart';
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/profile_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -51,11 +52,8 @@ class _EventsScreenState extends State<EventsScreen> {
     final now = DateTime.now();
     final visibleEvents = events.where((event) {
       if (event.status != 'upcoming') return false;
-      if (event.startsAt.isAfter(now)) return true;
+      if (event.endsAt.isAfter(now)) return true;
 
-      // Keep a registered event accessible while it is running and for one
-      // day afterwards, so the donor can show the attendance QR after giving
-      // blood. Past events are never offered for new registration.
       final registrationStatus = registrationStatuses[event.id];
       return registrationStatus == 'registered' &&
           event.endsAt.add(const Duration(days: 1)).isAfter(now);
@@ -110,6 +108,10 @@ class _EventsScreenState extends State<EventsScreen> {
     DonationEvent event, {
     required String? registrationStatus,
   }) async {
+    final existingReminder = await EventReminderService.instance.reminderFor(
+      event.id,
+    );
+    if (!mounted) return;
     final qrEventId = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -257,6 +259,24 @@ class _EventsScreenState extends State<EventsScreen> {
               ),
               if (registrationStatus == 'registered') ...[
                 const SizedBox(height: 10),
+                if (event.startsAt.isAfter(DateTime.now())) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        chooseReminder(event);
+                      },
+                      icon: const Icon(Icons.alarm_add_outlined),
+                      label: Text(
+                        existingReminder == null
+                            ? 'Set event reminder'
+                            : 'Reminder: ${dateLabel(existingReminder)}',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -353,6 +373,7 @@ class _EventsScreenState extends State<EventsScreen> {
       setState(() {
         data = loadData();
       });
+      await chooseReminder(event, afterRegistration: true);
     } on PostgrestException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -361,6 +382,144 @@ class _EventsScreenState extends State<EventsScreen> {
     } finally {
       if (mounted) setState(() => registeringEventId = null);
     }
+  }
+
+  Future<void> chooseReminder(
+    DonationEvent event, {
+    bool afterRegistration = false,
+  }) async {
+    if (!mounted) return;
+    final existing = await EventReminderService.instance.reminderFor(event.id);
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<_ReminderChoice>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                afterRegistration ? 'Add an event reminder?' : 'Event reminder',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text('${event.title} starts ${dateLabel(event.startsAt)}.'),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.today_outlined),
+                title: const Text('1 day before'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _ReminderChoice.oneDayBefore),
+              ),
+              ListTile(
+                leading: const Icon(Icons.schedule_outlined),
+                title: const Text('2 hours before'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _ReminderChoice.twoHoursBefore),
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_calendar_outlined),
+                title: const Text('Choose custom date and time'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, _ReminderChoice.custom),
+              ),
+              if (existing != null)
+                ListTile(
+                  leading: const Icon(Icons.alarm_off_outlined),
+                  title: const Text('Cancel current reminder'),
+                  subtitle: Text(dateLabel(existing)),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _ReminderChoice.cancel),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    if (choice == _ReminderChoice.cancel) {
+      await EventReminderService.instance.cancel(event.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event reminder cancelled.')),
+      );
+      return;
+    }
+
+    DateTime? reminderAt;
+    if (choice == _ReminderChoice.oneDayBefore) {
+      reminderAt = event.startsAt.subtract(const Duration(days: 1));
+    } else if (choice == _ReminderChoice.twoHoursBefore) {
+      reminderAt = event.startsAt.subtract(const Duration(hours: 2));
+    } else {
+      reminderAt = await pickCustomReminder(event);
+    }
+    if (reminderAt == null || !mounted) return;
+
+    try {
+      await EventReminderService.instance.schedule(
+        event: event,
+        reminderAt: reminderAt,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reminder set for ${dateLabel(reminderAt)}.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
+      );
+    }
+  }
+
+  Future<DateTime?> pickCustomReminder(DonationEvent event) async {
+    final now = DateTime.now();
+    final eventDay = DateTime(
+      event.startsAt.year,
+      event.startsAt.month,
+      event.startsAt.day,
+    );
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: now.isAfter(eventDay) ? eventDay : now,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: eventDay,
+      helpText: 'Choose reminder date',
+    );
+    if (selectedDate == null || !mounted) return null;
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+        event.startsAt.subtract(const Duration(hours: 2)),
+      ),
+      helpText: 'Choose reminder time',
+    );
+    if (selectedTime == null) return null;
+    final value = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    if (!value.isAfter(DateTime.now()) || !value.isBefore(event.startsAt)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Choose a future time before the event starts.'),
+          ),
+        );
+      }
+      return null;
+    }
+    return value;
   }
 
   Widget eventCard(
@@ -409,6 +568,48 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
               ],
             ),
+            if (registered && event.startsAt.isAfter(DateTime.now()))
+              FutureBuilder<DateTime?>(
+                future: EventReminderService.instance.reminderFor(event.id),
+                builder: (context, snapshot) {
+                  final reminder = snapshot.data;
+                  if (reminder == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: InkWell(
+                      onTap: () => chooseReminder(event),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.alarm_on_outlined, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Reminder: ${dateLabel(reminder)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.edit_outlined, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             if (event.description case final description?) ...[
               const SizedBox(height: 8),
               Text(description),
@@ -614,6 +815,8 @@ class _EventData {
   final Map<String, String> registrationStatuses;
   final DateTime? nextEligibleDate;
 }
+
+enum _ReminderChoice { oneDayBefore, twoHoursBefore, custom, cancel }
 
 class _AttendanceQrScreen extends StatelessWidget {
   const _AttendanceQrScreen({required this.qrData});

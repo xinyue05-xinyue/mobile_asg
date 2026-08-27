@@ -186,6 +186,15 @@ New public accounts always start as donors. A donor can apply for organisation-a
   - Verified donation reward points
 - Users can only read and update their own notifications
 
+### Feedback
+
+- Donors, organisation admins, and hospitals can submit categorised feedback
+  and review the status or response for their own submissions
+- System administrators have a feedback inbox and can mark submissions open,
+  reviewed, or resolved and send a response
+- Feedback is stored remotely in Supabase so it is available across accounts;
+  it is not currently queued for offline submission
+
 ## Offline and remote data design
 
 Supabase stores operational remote data:
@@ -236,6 +245,7 @@ Run the SQL migrations separately and in this order:
 14. `supabase/014_organisation_profiles.sql`
 15. `supabase/015_reward_redemption.sql`
 16. `supabase/016_event_qr_eligibility.sql`
+17. `supabase/017_feedback.sql`
 
 The original developer has already run these migrations on the current Supabase project. They only need to be rerun when setting up a new Supabase project.
 
@@ -342,6 +352,26 @@ At the latest handover:
 - The Android build currently prints a future Kotlin compatibility warning from
   `mobile_scanner`, but the APK builds successfully. Upgrade that plugin later
   when a compatible stable release is available.
+- Donors can schedule a local notification for a registered event one day
+  before, two hours before, or at a custom date and time. The reminder can be
+  changed or cancelled from the event details screen.
+- Reminder selections are stored locally with `SharedPreferences`; event and
+  registration records remain in Supabase. Android restores scheduled
+  notifications after a reboot or app update.
+- Reminder scheduling uses Android's inexact allow-while-idle mode and therefore
+  does not require exact-alarm access. Test timing on a physical Android device,
+  because battery optimisation can cause a small delivery delay.
+- Feedback now supports up to five optional PDF, image, DOC, or DOCX
+  attachments of 5 MB each. Run `supabase/018_feedback_attachments.sql` before
+  testing; it creates the private storage bucket, columns, and access policies.
+- Donor recognition level now uses verified donation count (Bronze 1, Silver 5,
+  Gold 10). Reward points remain a separate spendable balance, so redemption no
+  longer downgrades a donor's level.
+- Registered event cards display the donor's locally scheduled reminder time and
+  allow it to be changed by tapping the reminder panel.
+- Donors may register before an event or while it is in progress. Registration
+  closes at `ends_at`; run `supabase/019_in_progress_event_registration.sql` to
+  install the matching server-side rule.
 
 ## Immediate receiving-developer checklist
 
@@ -362,7 +392,8 @@ Suggested priority order:
 
 1. Add more automated repository, model, validation, and widget tests.
 2. Improve form validation messages and confirmation dialogs.
-3. Add local scheduled event reminders if required by the lecturer.
+3. Test event reminder permission, scheduling, cancellation, reboot restoration,
+   and delivery on a physical Android device.
 4. Improve UI consistency and empty/error states.
 5. Add genuine verified centre records or clearly label proposed event locations.
 6. Prepare screenshots, architecture diagrams, database design, testing evidence, and report content.

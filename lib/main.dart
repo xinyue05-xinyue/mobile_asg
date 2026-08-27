@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'app/theme/app_theme.dart';
+import 'data/local/event_reminder_service.dart';
 import 'data/remote/supabase_service.dart';
 import 'screens/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EventReminderService.instance.initialize();
   await SupabaseService.initialize();
   runApp(const MyDarahApp());
 }

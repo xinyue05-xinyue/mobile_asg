@@ -57,7 +57,8 @@ class SystemAdminRepository {
     final donationRows = await client
         .from('donations')
         .select('id')
-        .eq('donor_id', userId);
+        .eq('donor_id', userId)
+        .eq('verification_status', 'verified');
     final rewardRows = await client
         .from('reward_transactions')
         .select('points')

@@ -4,8 +4,10 @@ import '../../data/remote/profile_repository.dart';
 import '../../data/remote/role_request_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/profile_overview.dart';
+import '../../models/donor_level.dart';
 import '../../models/role_request.dart';
 import '../login_screen.dart';
+import '../feedback_screen.dart';
 import 'edit_profile_screen.dart';
 import 'history_screens.dart';
 import 'role_application_screen.dart';
@@ -41,20 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final day = value.day.toString().padLeft(2, '0');
     final month = value.month.toString().padLeft(2, '0');
     return '$day/$month/${value.year}';
-  }
-
-  String rewardLevel(int points) {
-    if (points >= 1000) return 'Gold Donor';
-    if (points >= 500) return 'Silver Donor';
-    if (points >= 100) return 'Bronze Donor';
-    return 'New Donor';
-  }
-
-  int? nextRewardTarget(int points) {
-    if (points < 100) return 100;
-    if (points < 500) return 500;
-    if (points < 1000) return 1000;
-    return null;
   }
 
   Future<void> editProfile(ProfileOverview value) async {
@@ -100,6 +88,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         automaticallyImplyLeading: false,
         title: const Text('My Profile'),
         actions: [
+          IconButton(
+            tooltip: 'Send feedback',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
+            ),
+            icon: const Icon(Icons.feedback_outlined),
+          ),
           IconButton(
             onPressed: signOut,
             tooltip: 'Log out',
@@ -203,8 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 12),
                     _RewardProgressCard(
                       points: value.rewardPoints,
-                      level: rewardLevel(value.rewardPoints),
-                      nextTarget: nextRewardTarget(value.rewardPoints),
+                      donationCount: value.donations.length,
                       onRedeem: openRewards,
                     ),
                     const SizedBox(height: 24),
@@ -330,26 +325,18 @@ class _MetricCard extends StatelessWidget {
 class _RewardProgressCard extends StatelessWidget {
   const _RewardProgressCard({
     required this.points,
-    required this.level,
-    required this.nextTarget,
+    required this.donationCount,
     required this.onRedeem,
   });
 
   final int points;
-  final String level;
-  final int? nextTarget;
+  final int donationCount;
   final VoidCallback onRedeem;
-
-  double get progress {
-    final target = nextTarget;
-    if (target == null) return 1;
-    return target == 0 ? 1 : (points / target).clamp(0, 1);
-  }
 
   @override
   Widget build(BuildContext context) {
-    final target = nextTarget;
-    final remaining = target == null ? 0 : target - points;
+    final target = DonorLevel.nextTarget(donationCount);
+    final remaining = target == null ? 0 : target - donationCount;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -365,10 +352,12 @@ class _RewardProgressCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        level,
+                        DonorLevel.name(donationCount),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      Text('$points total points'),
+                      Text(
+                        '$donationCount verified donations • $points available points',
+                      ),
                     ],
                   ),
                 ),
@@ -377,13 +366,16 @@ class _RewardProgressCard extends StatelessWidget {
             const SizedBox(height: 16),
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(value: progress, minHeight: 18),
+              child: LinearProgressIndicator(
+                value: DonorLevel.progress(donationCount),
+                minHeight: 18,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               target == null
                   ? 'Highest recognition level reached.'
-                  : '$remaining more points to ${_levelAt(target)}.',
+                  : '$remaining more verified donation${remaining == 1 ? '' : 's'} to ${DonorLevel.name(target)}.',
             ),
             const SizedBox(height: 14),
             const Divider(),
@@ -394,8 +386,9 @@ class _RewardProgressCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Every verified event or emergency donation earns 100 points. '
-              'Use points for vouchers and MyDarah merchandise.',
+              'Your donor level is based on verified donation count, so redeeming '
+              'points will never reduce your level. Every verified event or '
+              'emergency donation earns 100 redeemable points.',
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -411,9 +404,9 @@ class _RewardProgressCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('Bronze · 100')),
-                Chip(label: Text('Silver · 500')),
-                Chip(label: Text('Gold · 1,000')),
+                Chip(label: Text('Bronze · 1 donation')),
+                Chip(label: Text('Silver · 5 donations')),
+                Chip(label: Text('Gold · 10 donations')),
               ],
             ),
           ],
@@ -421,12 +414,6 @@ class _RewardProgressCard extends StatelessWidget {
       ),
     );
   }
-
-  String _levelAt(int target) => switch (target) {
-    100 => 'Bronze Donor',
-    500 => 'Silver Donor',
-    _ => 'Gold Donor',
-  };
 }
 
 class _RoleRequests extends StatelessWidget {
