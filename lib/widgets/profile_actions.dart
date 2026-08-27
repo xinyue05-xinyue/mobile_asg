@@ -1,0 +1,90 @@
+import 'package:flutter/material.dart';
+
+import '../data/remote/supabase_service.dart';
+import '../screens/feedback_screen.dart';
+import '../screens/login_screen.dart';
+import '../screens/system_admin/feedback_inbox_screen.dart';
+
+class ProfileActions extends StatelessWidget {
+  const ProfileActions({super.key, this.isSystemAdmin = false});
+
+  final bool isSystemAdmin;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      leading: const Icon(Icons.feedback_outlined),
+      title: Text(isSystemAdmin ? 'Feedback inbox' : 'Send feedback'),
+      subtitle: Text(
+        isSystemAdmin
+            ? 'Read and respond to feedback'
+            : 'Report a problem or share a suggestion',
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => isSystemAdmin
+              ? const FeedbackInboxScreen()
+              : const FeedbackScreen(),
+        ),
+      ),
+    ),
+  );
+}
+
+class ProfileLogoutButton extends StatefulWidget {
+  const ProfileLogoutButton({super.key});
+
+  @override
+  State<ProfileLogoutButton> createState() => _ProfileActionsState();
+}
+
+class _ProfileActionsState extends State<ProfileLogoutButton> {
+  bool signingOut = false;
+
+  Future<void> signOut() async {
+    if (signingOut) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You can log in again to access your account.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => signingOut = true);
+    try {
+      await SupabaseService.client?.auth.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to log out. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => signingOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: signingOut ? 'Logging out…' : 'Log out',
+    icon: const Icon(Icons.logout),
+    onPressed: signingOut ? null : signOut,
+  );
+}
