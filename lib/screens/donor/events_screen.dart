@@ -440,6 +440,12 @@ class _EventsScreenState extends State<EventsScreen> {
               ),
               const SizedBox(height: 6),
               Text('${event.title} starts ${dateLabel(event.startsAt)}.'),
+              const SizedBox(height: 6),
+              Text(
+                EventReminderService.emailEnabled
+                    ? 'Send to your login email and the app inbox. On mobile, also schedule a phone notification when permission is allowed.'
+                    : 'Phone notifications are available. Email reminders require server setup.',
+              ),
               const SizedBox(height: 12),
               ListTile(
                 leading: const Icon(Icons.today_outlined),
@@ -475,12 +481,23 @@ class _EventsScreenState extends State<EventsScreen> {
     if (choice == null || !mounted) return;
 
     if (choice == _ReminderChoice.cancel) {
-      await EventReminderService.instance.cancel(event.id);
-      if (!mounted) return;
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event reminder cancelled.')),
-      );
+      try {
+        await EventReminderService.instance.cancel(event.id);
+        if (!mounted) return;
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event reminder cancelled.')),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to cancel the reminder. Please check your connection and retry.',
+            ),
+          ),
+        );
+      }
       return;
     }
 
@@ -495,14 +512,14 @@ class _EventsScreenState extends State<EventsScreen> {
     if (reminderAt == null || !mounted) return;
 
     try {
-      await EventReminderService.instance.schedule(
+      final result = await EventReminderService.instance.schedule(
         event: event,
         reminderAt: reminderAt,
       );
       if (!mounted) return;
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reminder set for ${dateLabel(reminderAt)}.')),
+        SnackBar(content: Text('$result Time: ${dateLabel(reminderAt)}.')),
       );
     } catch (error) {
       if (!mounted) return;

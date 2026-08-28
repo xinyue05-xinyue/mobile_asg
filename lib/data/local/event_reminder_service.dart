@@ -5,11 +5,17 @@ import 'package:timezone/data/latest_all.dart' as timezone_data;
 import 'package:timezone/timezone.dart' as timezone;
 
 import '../../models/donation_event.dart';
+import '../remote/supabase_service.dart';
 
 class EventReminderService {
   EventReminderService._();
 
   static final EventReminderService instance = EventReminderService._();
+  // MyDarah's email backend is deployed. Other environments can opt out.
+  static const emailEnabled = bool.fromEnvironment(
+    'ENABLE_EMAIL_REMINDERS',
+    defaultValue: true,
+  );
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
@@ -41,19 +47,34 @@ class EventReminderService {
   }
 
   Future<DateTime?> reminderFor(String eventId) async {
+    if (emailEnabled) {
+      final client = SupabaseService.client;
+      final userId = client?.auth.currentUser?.id;
+      if (client == null || userId == null) return null;
+      final row = await client
+          .from('event_email_reminders')
+          .select('remind_at')
+          .eq('user_id', userId)
+          .eq('event_id', eventId)
+          .inFilter('status', ['pending', 'sending'])
+          .maybeSingle();
+      return row == null
+          ? null
+          : DateTime.parse(row['remind_at'] as String).toLocal();
+    }
     final value = (await SharedPreferences.getInstance()).getString(
       _preferenceKey(eventId),
     );
     return value == null ? null : DateTime.tryParse(value)?.toLocal();
   }
 
-  Future<void> schedule({
+  Future<String> schedule({
     required DonationEvent event,
     required DateTime reminderAt,
   }) async {
-    if (!_isSupported) {
+    if (!_isSupported && !emailEnabled) {
       throw StateError(
-        'Event reminders are only available on a mobile device.',
+        'Email reminders need server setup first. Mobile reminders are still available in the phone app.',
       );
     }
     if (!reminderAt.isAfter(DateTime.now()) ||
@@ -61,38 +82,74 @@ class EventReminderService {
       throw ArgumentError('Choose a future time before the event starts.');
     }
 
-    final permissionGranted = await _requestPermission();
-    if (!permissionGranted) {
-      throw StateError(
-        'Notification permission is required to schedule a reminder.',
+    if (emailEnabled) {
+      final client = SupabaseService.client;
+      if (client?.auth.currentUser == null) {
+        throw StateError('Please log in to schedule an email reminder.');
+      }
+      await client!.rpc(
+        'set_event_email_reminder',
+        params: {
+          'p_event_id': event.id,
+          'p_remind_at': reminderAt.toUtc().toIso8601String(),
+        },
       );
     }
+    if (!_isSupported) return 'Email and in-app reminder scheduled.';
 
-    await _notifications.zonedSchedule(
-      id: _notificationId(event.id),
-      title: 'Blood donation event reminder',
-      body: '${event.title} starts soon at ${event.venue}.',
-      scheduledDate: timezone.TZDateTime.from(reminderAt, timezone.local),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'event_reminders',
-          'Event reminders',
-          channelDescription: 'Reminders for registered blood donation events',
-          importance: Importance.high,
-          priority: Priority.high,
+    try {
+      final permissionGranted = await _requestPermission();
+      if (!permissionGranted) {
+        throw StateError(
+          'Notification permission is required to schedule a reminder.',
+        );
+      }
+
+      await _notifications.zonedSchedule(
+        id: _notificationId(event.id),
+        title: 'Blood donation event reminder',
+        body: '${event.title} starts soon at ${event.venue}.',
+        scheduledDate: timezone.TZDateTime.from(reminderAt, timezone.local),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'event_reminders',
+            'Event reminders',
+            channelDescription:
+                'Reminders for registered blood donation events',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      payload: 'event:${event.id}',
-    );
-    await (await SharedPreferences.getInstance()).setString(
-      _preferenceKey(event.id),
-      reminderAt.toUtc().toIso8601String(),
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: 'event:${event.id}',
+      );
+      await (await SharedPreferences.getInstance()).setString(
+        _preferenceKey(event.id),
+        reminderAt.toUtc().toIso8601String(),
+      );
+    } catch (_) {
+      if (emailEnabled) {
+        return 'Email reminder saved. Phone notification could not be scheduled; check notification permissions.';
+      }
+      rethrow;
+    }
+    return emailEnabled
+        ? 'Email and phone reminder scheduled.'
+        : 'Phone reminder scheduled. Email delivery is not configured yet.';
   }
 
   Future<void> cancel(String eventId) async {
+    if (emailEnabled) {
+      final client = SupabaseService.client;
+      if (client?.auth.currentUser == null) {
+        throw StateError('Please log in again.');
+      }
+      await client!.rpc(
+        'set_event_email_reminder',
+        params: {'p_event_id': eventId, 'p_remind_at': null},
+      );
+    }
     if (_isSupported) {
       await _notifications.cancel(id: _notificationId(eventId));
     }
@@ -118,7 +175,8 @@ class EventReminderService {
         false;
   }
 
-  String _preferenceKey(String eventId) => 'event_reminder_$eventId';
+  String _preferenceKey(String eventId) =>
+      'event_reminder_${SupabaseService.client?.auth.currentUser?.id ?? 'local'}_$eventId';
 
   int _notificationId(String eventId) {
     var hash = 2166136261;
