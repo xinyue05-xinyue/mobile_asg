@@ -243,7 +243,9 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.centre == null ? 'Add centre' : 'Edit centre'),
+        title: Text(
+          widget.centre == null ? 'Add event venue' : 'Edit event venue',
+        ),
       ),
       body: Form(
         key: formKey,
@@ -404,7 +406,7 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
                       dimension: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Save centre'),
+                  : const Text('Save event venue'),
             ),
           ],
         ),

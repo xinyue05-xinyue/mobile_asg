@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/remote/auth_repository.dart';
 import '../data/remote/auth_error_message.dart';
 import '../data/remote/supabase_service.dart';
+import '../widgets/my_darah_brand.dart';
 import 'donor/donor_shell.dart';
 import 'login_screen.dart';
 
@@ -92,7 +93,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Icon(Icons.bloodtype, size: 72, color: Colors.red),
+            const MyDarahMark(size: 76),
             const SizedBox(height: 24),
             TextFormField(
               controller: nameController,

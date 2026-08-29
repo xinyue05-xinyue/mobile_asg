@@ -2,9 +2,9 @@ class DonorLevel {
   const DonorLevel._();
 
   static String name(int donationCount, {bool short = false}) {
-    final level = donationCount >= 10
+    final level = donationCount >= 16
         ? 'Gold'
-        : donationCount >= 5
+        : donationCount >= 6
         ? 'Silver'
         : donationCount >= 1
         ? 'Bronze'
@@ -14,8 +14,8 @@ class DonorLevel {
 
   static int? nextTarget(int donationCount) {
     if (donationCount < 1) return 1;
-    if (donationCount < 5) return 5;
-    if (donationCount < 10) return 10;
+    if (donationCount < 6) return 6;
+    if (donationCount < 16) return 16;
     return null;
   }
 
@@ -24,12 +24,19 @@ class DonorLevel {
     if (target == null) return 1;
     final previousTarget = donationCount < 1
         ? 0
-        : donationCount < 5
+        : donationCount < 6
         ? 1
-        : 5;
+        : 6;
     return ((donationCount - previousTarget) / (target - previousTarget)).clamp(
       0,
       1,
     );
+  }
+
+  static String progressLabel(int donationCount) {
+    final target = nextTarget(donationCount);
+    if (target == null) return 'Highest app recognition level reached';
+    final remaining = target - donationCount;
+    return '$remaining more verified ${remaining == 1 ? 'donation' : 'donations'} to ${name(target)}';
   }
 }

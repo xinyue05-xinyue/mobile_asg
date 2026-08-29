@@ -13,7 +13,7 @@ class AppDatabase {
     final databasePath = await getDatabasesPath();
     _database = await openDatabase(
       path.join(databasePath, 'my_darah.db'),
-      version: 6,
+      version: 7,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
       },
@@ -52,6 +52,7 @@ class AppDatabase {
         image_path TEXT,
         created_by TEXT,
         organiser_name TEXT,
+        publish_at TEXT,
         synced_at TEXT NOT NULL
       )
     ''');
@@ -113,6 +114,11 @@ class AppDatabase {
       );
       await database.execute(
         'ALTER TABLE donation_events ADD COLUMN organiser_name TEXT',
+      );
+    }
+    if (oldVersion < 7) {
+      await database.execute(
+        'ALTER TABLE donation_events ADD COLUMN publish_at TEXT',
       );
     }
     if (oldVersion < 5) {

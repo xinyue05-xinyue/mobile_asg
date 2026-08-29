@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/remote/auth_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/user_role.dart';
+import '../widgets/my_darah_brand.dart';
 import 'role_home.dart';
+import 'reset_password_screen.dart';
 import 'welcome_screen.dart';
 
 class AuthGate extends StatefulWidget {
@@ -15,14 +19,27 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   Future<UserRole?>? roleFuture;
+  StreamSubscription<AuthState>? authSubscription;
+  bool passwordRecovery = false;
 
   @override
   void initState() {
     super.initState();
     final client = SupabaseService.client;
+    authSubscription = client?.auth.onAuthStateChange.listen((state) {
+      if (state.event == AuthChangeEvent.passwordRecovery && mounted) {
+        setState(() => passwordRecovery = true);
+      }
+    });
     if (client != null && client.auth.currentSession != null) {
       roleFuture = AuthRepository(client).getCurrentRole();
     }
+  }
+
+  @override
+  void dispose() {
+    authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> retry() async {
@@ -40,6 +57,14 @@ class _AuthGateState extends State<AuthGate> {
 
   @override
   Widget build(BuildContext context) {
+    if (passwordRecovery) {
+      return ResetPasswordScreen(
+        onComplete: () => setState(() {
+          passwordRecovery = false;
+          roleFuture = null;
+        }),
+      );
+    }
     final future = roleFuture;
     if (future == null) return const WelcomeScreen();
 
@@ -69,7 +94,7 @@ class _StartupScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.bloodtype, size: 72, color: Colors.red),
+            MyDarahMark(size: 76),
             SizedBox(height: 20),
             CircularProgressIndicator(),
             SizedBox(height: 12),

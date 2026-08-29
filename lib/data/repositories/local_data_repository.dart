@@ -113,8 +113,8 @@ class LocalDataRepository {
     final database = await _appDatabase.database;
     final rows = await database.query(
       'donation_events',
-      where: 'status != ?',
-      whereArgs: ['cancelled'],
+      where: 'status != ? AND (publish_at IS NULL OR publish_at <= ?)',
+      whereArgs: ['cancelled', DateTime.now().toUtc().toIso8601String()],
       orderBy: 'starts_at',
     );
     return rows.map(DonationEvent.fromMap).toList();

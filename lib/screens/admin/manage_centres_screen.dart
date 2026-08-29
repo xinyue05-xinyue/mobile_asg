@@ -42,11 +42,11 @@ class _ManageCentresScreenState extends State<ManageCentresScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Centres')),
+      appBar: AppBar(title: const Text('Manage Event Venues')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: openForm,
         icon: const Icon(Icons.add_location_alt_outlined),
-        label: const Text('Add centre'),
+        label: const Text('Add event venue'),
       ),
       body: FutureBuilder<List<DonationCentre>>(
         future: centres,
@@ -61,7 +61,7 @@ class _ManageCentresScreenState extends State<ManageCentresScreen> {
           }
           final items = snapshot.data ?? const [];
           if (items.isEmpty) {
-            return const Center(child: Text('No centres added yet.'));
+            return const Center(child: Text('No event venues added yet.'));
           }
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),

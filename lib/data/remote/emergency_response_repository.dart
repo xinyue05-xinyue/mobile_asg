@@ -40,6 +40,24 @@ class EmergencyResponseRepository {
     return rows.map(EmergencyResponse.fromMap).toList();
   }
 
+  Future<EmergencyResponse?> getForRequestAndDonor({
+    required String requestId,
+    required String donorId,
+  }) async {
+    final rows = await client
+        .from('emergency_responses')
+        .select(
+          'id, request_id, donor_id, status, created_at, '
+          'donor:profiles!emergency_responses_donor_id_fkey('
+          'full_name, blood_type, phone, next_eligible_date)',
+        )
+        .eq('request_id', requestId)
+        .eq('donor_id', donorId)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    return EmergencyResponse.fromMap(rows.first);
+  }
+
   Future<void> verifyDonation({
     required String responseId,
     required DateTime nextEligibleDate,

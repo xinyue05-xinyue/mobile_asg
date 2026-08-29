@@ -41,6 +41,9 @@ create table public.donation_events (
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  publish_at timestamptz not null default now(),
+  published_notified_at timestamptz,
+  check (publish_at <= starts_at),
   check (ends_at > starts_at)
 );
 
@@ -135,7 +138,11 @@ using (public.is_hospital_admin())
 with check (public.is_hospital_admin());
 
 create policy events_read on public.donation_events
-for select to authenticated using (true);
+for select to authenticated using (
+  publish_at <= now()
+  or created_by = auth.uid()
+  or public.is_system_admin()
+);
 
 create policy events_admin_all on public.donation_events
 for all to authenticated

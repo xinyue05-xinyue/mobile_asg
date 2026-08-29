@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
+import '../../models/donation_event.dart';
 import '../../widgets/notification_button.dart';
 import '../../widgets/signed_in_identity_card.dart';
-import '../statistics_screen.dart';
+import 'donor_analysis_screen.dart';
+import 'event_registrations_screen.dart';
 import 'manage_centres_screen.dart';
 import 'manage_events_screen.dart';
-import 'admin_registrations_overview_screen.dart';
+import 'qr_attendance_scanner_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -17,13 +20,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  late Future<AdminDashboardSummary> summary;
-
-  @override
-  void initState() {
-    super.initState();
-    summary = loadSummary();
-  }
+  late Future<AdminDashboardSummary> summary = loadSummary();
 
   Future<AdminDashboardSummary> loadSummary() {
     final client = SupabaseService.client;
@@ -37,9 +34,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> refresh() async {
     final refreshed = loadSummary();
-    setState(() {
-      summary = refreshed;
-    });
+    setState(() => summary = refreshed);
     await refreshed;
   }
 
@@ -51,7 +46,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (mounted) await refresh();
   }
 
-  Future<void> openCentres() async {
+  Future<void> openVenues() async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ManageCentresScreen()),
@@ -59,138 +54,226 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (mounted) await refresh();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Organisation Admin'),
-        actions: const [StatisticsIconButton(), NotificationButton()],
+  Future<void> scan(DonationEvent event) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QrAttendanceScannerScreen(event: event),
       ),
-      body: FutureBuilder<AdminDashboardSummary>(
-        future: summary,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Unable to load dashboard information.'),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: refresh,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Try again'),
-                    ),
-                  ],
-                ),
+    );
+    if (mounted) await refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      automaticallyImplyLeading: false,
+      title: const Text('Organisation workspace'),
+      actions: const [NotificationButton()],
+    ),
+    body: FutureBuilder<AdminDashboardSummary>(
+      future: summary,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return _LoadError(onRetry: refresh);
+        }
+        final value = snapshot.data!;
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+            children: [
+              const SignedInIdentityCard(roleLabel: 'Organisation admin'),
+              const SizedBox(height: 18),
+              Text(
+                'Today at a glance',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-            );
-          }
-          final value = snapshot.data!;
-          return RefreshIndicator(
-            onRefresh: refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              children: [
-                const SignedInIdentityCard(roleLabel: 'Organisation admin'),
-                const SizedBox(height: 12),
-                Text(
-                  'Dashboard',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SummaryCard(
-                        label: 'Upcoming events',
-                        value: '${value.upcomingEvents}',
-                        icon: Icons.event_outlined,
-                        onTap: openEvents,
-                      ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SummaryCard(
+                      label: 'Manage events',
+                      detail: '${value.upcomingEvents} open',
+                      icon: Icons.event_outlined,
+                      onTap: openEvents,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _SummaryCard(
-                        label: 'Donor registrations',
-                        value: '${value.donorRegistrations}',
-                        icon: Icons.fact_check_outlined,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const AdminRegistrationsOverviewScreen(),
-                          ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SummaryCard(
+                      label: 'Donor analysis',
+                      detail: '${value.donorRegistrations} registrations',
+                      icon: Icons.analytics_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DonorAnalysisScreen(),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Live data from your organisation events in Supabase.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: openEvents,
-                  icon: const Icon(Icons.event_outlined),
-                  label: const Text('Manage donation events'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: openCentres,
-                  icon: const Icon(Icons.location_on_outlined),
-                  label: const Text('Manage donation centres'),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _SummaryCard(
+                      label: 'Event venues',
+                      detail: 'Manage locations',
+                      icon: Icons.location_on_outlined,
+                      onTap: openVenues,
+                    ),
+                  ),
+                ],
+              ),
+              if (value.focusEvent != null) ...[
+                const SizedBox(height: 18),
+                _FocusEventCard(
+                  event: value.focusEvent!,
+                  active: value.focusEventIsActive,
+                  onScan: value.focusEventIsActive
+                      ? () => scan(value.focusEvent!)
+                      : null,
+                  onRegistrations: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          EventRegistrationsScreen(event: value.focusEvent!),
+                    ),
+                  ),
                 ),
               ],
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+class _FocusEventCard extends StatelessWidget {
+  const _FocusEventCard({
+    required this.event,
+    required this.active,
+    required this.onScan,
+    required this.onRegistrations,
+  });
+  final DonationEvent event;
+  final bool active;
+  final VoidCallback? onScan;
+  final VoidCallback onRegistrations;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: AppTheme.organisation.withValues(alpha: .08),
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                active ? Icons.radio_button_checked : Icons.upcoming_outlined,
+                color: AppTheme.organisation,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                active ? 'Event happening now' : 'Next event',
+                style: const TextStyle(
+                  color: AppTheme.organisation,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(event.title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(event.venue, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 14),
+          if (active)
+            FilledButton.icon(
+              onPressed: onScan,
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan donor QR'),
             ),
-          );
-        },
+          TextButton.icon(
+            onPressed: onRegistrations,
+            icon: const Icon(Icons.people_outline),
+            label: const Text('View donor registrations'),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.label,
-    required this.value,
+    required this.detail,
     required this.icon,
     required this.onTap,
   });
-
   final String label;
-  final String value;
+  final String detail;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 16),
-              Text(value, style: Theme.of(context).textTheme.headlineMedium),
-              Text(label),
-            ],
-          ),
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+        child: Column(
+          children: [
+            Icon(icon, color: AppTheme.organisation),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              detail,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Unable to load dashboard information.'),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try again'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

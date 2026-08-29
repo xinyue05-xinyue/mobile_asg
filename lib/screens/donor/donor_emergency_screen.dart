@@ -6,6 +6,7 @@ import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_request.dart';
+import 'emergency_attendance_qr_screen.dart';
 
 class DonorEmergencyScreen extends StatefulWidget {
   const DonorEmergencyScreen({super.key});
@@ -142,14 +143,37 @@ class _DonorEmergencyScreenState extends State<DonorEmergencyScreen> {
                         ),
                         const SizedBox(height: 12),
                         FilledButton.icon(
-                          onPressed: responded || submittingRequestId != null
+                          onPressed: submittingRequestId != null
                               ? null
+                              : responded
+                              ? () {
+                                  final donorId = SupabaseService
+                                      .client
+                                      ?.auth
+                                      .currentUser
+                                      ?.id;
+                                  if (donorId == null) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          EmergencyAttendanceQrScreen(
+                                            request: request,
+                                            donorId: donorId,
+                                          ),
+                                    ),
+                                  );
+                                }
                               : () => respond(request),
                           icon: Icon(
-                            responded ? Icons.check : Icons.volunteer_activism,
+                            responded
+                                ? Icons.qr_code_2
+                                : Icons.volunteer_activism,
                           ),
                           label: Text(
-                            responded ? 'Response sent' : 'I can donate',
+                            responded
+                                ? 'Show emergency donation QR'
+                                : 'I can donate',
                           ),
                         ),
                       ],

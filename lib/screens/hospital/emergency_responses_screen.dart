@@ -4,6 +4,7 @@ import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_request.dart';
 import '../../models/emergency_response.dart';
+import 'emergency_qr_scanner_screen.dart';
 
 class EmergencyResponsesScreen extends StatefulWidget {
   const EmergencyResponsesScreen({super.key, required this.request});
@@ -33,21 +34,22 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
 
   Future<void> verify(EmergencyResponse response) async {
     final today = DateTime.now();
-    final nextDate = await showDatePicker(
-      context: context,
-      initialDate: today.add(const Duration(days: 60)),
-      firstDate: today.add(const Duration(days: 1)),
-      lastDate: today.add(const Duration(days: 365)),
-      helpText: 'Set next eligible donation date',
+    final month = today.month + 3;
+    final year = today.year + (month - 1) ~/ 12;
+    final normalisedMonth = (month - 1) % 12 + 1;
+    final lastDay = DateTime(year, normalisedMonth + 1, 0).day;
+    final nextDate = DateTime(
+      year,
+      normalisedMonth,
+      today.day.clamp(1, lastDay),
     );
-    if (nextDate == null || !mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Verify completed donation?'),
-        content: const Text(
-          'This creates a verified donation record and awards 100 points. This action cannot be repeated.',
+        content: Text(
+          'This creates a verified donation record, awards 100 points, and sets the next eligible date to ${dateLabel(nextDate)} (three months from today). This action cannot be repeated.',
         ),
         actions: [
           TextButton(
@@ -145,6 +147,19 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Donor responses')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EmergencyQrScannerScreen(request: widget.request),
+            ),
+          );
+          if (mounted) setState(() => responses = loadResponses());
+        },
+        icon: const Icon(Icons.qr_code_scanner),
+        label: const Text('Scan donor QR'),
+      ),
       body: FutureBuilder<List<EmergencyResponse>>(
         future: responses,
         builder: (context, snapshot) {

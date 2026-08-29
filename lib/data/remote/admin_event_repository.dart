@@ -28,6 +28,7 @@ class AdminEventRepository {
     required double? latitude,
     required double? longitude,
     required String? imagePath,
+    required DateTime publishAt,
   }) async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');
@@ -42,6 +43,7 @@ class AdminEventRepository {
       'latitude': latitude,
       'longitude': longitude,
       'image_path': imagePath,
+      'publish_at': publishAt.toUtc().toIso8601String(),
     });
   }
 
@@ -55,6 +57,7 @@ class AdminEventRepository {
     required double? latitude,
     required double? longitude,
     required String? imagePath,
+    required DateTime publishAt,
   }) async {
     await client
         .from('donation_events')
@@ -68,6 +71,7 @@ class AdminEventRepository {
           'latitude': latitude,
           'longitude': longitude,
           'image_path': imagePath,
+          'publish_at': publishAt.toUtc().toIso8601String(),
         })
         .eq('id', id);
   }

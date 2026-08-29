@@ -230,7 +230,7 @@ class _CentresScreenState extends State<CentresScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Donation Centres'),
+        title: const Text('Where to donate'),
       ),
       body: FutureBuilder<_CentreData>(
         future: data,
@@ -282,7 +282,7 @@ class _CentresScreenState extends State<CentresScreen> {
                   controller: searchController,
                   onChanged: (value) => setState(() => query = value),
                   decoration: const InputDecoration(
-                    labelText: 'Search centres by name, address or state',
+                    labelText: 'Search facilities and event venues',
                     prefixIcon: Icon(Icons.search),
                   ),
                 ),
@@ -373,7 +373,7 @@ class _CentresScreenState extends State<CentresScreen> {
                 if (centres.isEmpty)
                   const Card(
                     child: ListTile(
-                      title: Text('No matching donation centres.'),
+                      title: Text('No matching donation locations.'),
                       subtitle: Text(
                         'Centre records can be added by an organisation admin.',
                       ),
@@ -393,6 +393,7 @@ class _CentresScreenState extends State<CentresScreen> {
                         ),
                         title: Text(centre.name),
                         subtitle: Text(
+                          '${centre.sourceId == null ? 'Organisation event venue' : 'Official BBISv2 collection facility'}\n'
                           '${centre.address}\n${centre.state}'
                           '${centre.operatingHours == null ? '' : '\n${centre.operatingHours}'}'
                           '${distanceLabel(centre) == null ? '' : '\n${distanceLabel(centre)} away'}',

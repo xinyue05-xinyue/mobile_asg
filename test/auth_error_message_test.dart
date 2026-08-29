@@ -33,7 +33,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
     await tester.enterText(find.byType(TextField).at(0), 'test@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'test-password');
-    await tester.tap(find.byType(ElevatedButton));
+    await tester.tap(find.byType(FilledButton));
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.textContaining('Login is unavailable.'), findsOneWidget);

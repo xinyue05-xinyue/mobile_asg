@@ -3,7 +3,6 @@ import '../../widgets/event_schedule.dart';
 import '../../widgets/institution_details_tile.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,6 +12,7 @@ import '../../data/remote/profile_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/repositories/data_sync_service.dart';
 import '../../models/donation_event.dart';
+import 'attendance_qr_screen.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -323,11 +323,11 @@ class _EventsScreenState extends State<EventsScreen> {
       ),
     );
     if (qrEventId != null && mounted) {
-      await showAttendanceQr(qrEventId);
+      await showAttendanceQr(event);
     }
   }
 
-  Future<void> showAttendanceQr(String eventId) async {
+  Future<void> showAttendanceQr(DonationEvent event) async {
     final userId = SupabaseService.client?.auth.currentUser?.id;
     if (userId == null) {
       if (!mounted) return;
@@ -339,8 +339,7 @@ class _EventsScreenState extends State<EventsScreen> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            _AttendanceQrScreen(qrData: 'mydarah:event:$eventId:donor:$userId'),
+        builder: (_) => DonorAttendanceQrScreen(event: event, donorId: userId),
       ),
     );
   }
@@ -894,38 +893,3 @@ class _EventData {
 }
 
 enum _ReminderChoice { oneDayBefore, twoHoursBefore, custom, cancel }
-
-class _AttendanceQrScreen extends StatelessWidget {
-  const _AttendanceQrScreen({required this.qrData});
-
-  final String qrData;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My attendance QR')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.white,
-                  child: QrImageView(data: qrData, size: 240),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Show this QR to the organisation admin only after you donate.',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

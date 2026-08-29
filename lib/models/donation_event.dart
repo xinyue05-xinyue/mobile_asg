@@ -12,6 +12,7 @@ class DonationEvent {
     this.imagePath,
     this.createdBy,
     this.organiserName,
+    this.publishAt,
   });
 
   final String id;
@@ -26,6 +27,10 @@ class DonationEvent {
   final String? imagePath;
   final String? createdBy;
   final String? organiserName;
+  final DateTime? publishAt;
+
+  bool get isPublished =>
+      publishAt == null || !publishAt!.isAfter(DateTime.now());
 
   bool registrationOpenAt(DateTime now) =>
       status == 'upcoming' && endsAt.isAfter(now);
@@ -54,6 +59,7 @@ class DonationEvent {
     'image_path': imagePath,
     'created_by': createdBy,
     'organiser_name': organiserName,
+    'publish_at': publishAt?.toUtc().toIso8601String(),
   };
 
   factory DonationEvent.fromMap(Map<String, Object?> map) => DonationEvent(
@@ -69,5 +75,8 @@ class DonationEvent {
     imagePath: map['image_path'] as String?,
     createdBy: map['created_by'] as String?,
     organiserName: map['organiser_name'] as String?,
+    publishAt: map['publish_at'] == null
+        ? null
+        : DateTime.parse(map['publish_at']! as String).toLocal(),
   );
 }

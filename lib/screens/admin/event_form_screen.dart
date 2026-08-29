@@ -28,6 +28,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   late final TextEditingController descriptionController;
   late DateTime startsAt;
   late DateTime endsAt;
+  late DateTime publishAt;
   bool isSaving = false;
   LatLng? location;
   Uint8List? imageBytes;
@@ -49,6 +50,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     descriptionController = TextEditingController(text: event?.description);
     startsAt = event?.startsAt ?? defaultStart;
     endsAt = event?.endsAt ?? defaultStart.add(const Duration(hours: 5));
+    publishAt = event?.publishAt ?? DateTime.now();
     if (event?.latitude != null && event?.longitude != null) {
       location = LatLng(event!.latitude!, event.longitude!);
     }
@@ -177,7 +179,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     final date = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
       lastDate: DateTime.now().add(const Duration(days: 730)),
     );
     if (date == null || !mounted) return null;
@@ -194,6 +196,14 @@ class _EventFormScreenState extends State<EventFormScreen> {
     if (!endsAt.isAfter(startsAt)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('End time must be after start time.')),
+      );
+      return;
+    }
+    if (publishAt.isAfter(startsAt)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The event must be published before it starts.'),
+        ),
       );
       return;
     }
@@ -226,6 +236,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
           latitude: location!.latitude,
           longitude: location!.longitude,
           imagePath: imagePath,
+          publishAt: publishAt,
         );
       } else {
         await repository.update(
@@ -238,6 +249,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
           latitude: location!.latitude,
           longitude: location!.longitude,
           imagePath: imagePath,
+          publishAt: publishAt,
         );
       }
       if (!mounted) return;
@@ -429,6 +441,22 @@ class _EventFormScreenState extends State<EventFormScreen> {
             ),
             const SizedBox(height: 16),
             _DateTile(
+              label: 'Publish event',
+              value: dateLabel(publishAt),
+              icon: Icons.schedule_send_outlined,
+              onTap: () async {
+                final value = await chooseDateTime(publishAt);
+                if (value != null) setState(() => publishAt = value);
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Donors will see the event and receive the in-app event notification from this time.',
+              ),
+            ),
+            const SizedBox(height: 16),
+            _DateTile(
               label: 'Starts',
               value: dateLabel(startsAt),
               onTap: () async {
@@ -483,11 +511,13 @@ class _DateTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onTap,
+    this.icon = Icons.event_outlined,
   });
 
   final String label;
   final String value;
   final VoidCallback onTap;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +527,7 @@ class _DateTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Theme.of(context).dividerColor),
       ),
-      leading: const Icon(Icons.event_outlined),
+      leading: Icon(icon),
       title: Text(label),
       subtitle: Text(value),
       trailing: const Icon(Icons.edit_calendar_outlined),

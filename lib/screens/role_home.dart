@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/app_theme.dart';
 import '../models/user_role.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'donor/donor_shell.dart';
@@ -10,17 +11,29 @@ import 'staff_profile_screen.dart';
 import 'system_admin/system_admin_profile_screen.dart';
 
 Widget homeForRole(UserRole role) => switch (role) {
-  UserRole.donor => const DonorShell(),
-  UserRole.admin => const StaffShell(
-    mainPage: AdminDashboardScreen(),
-    profilePage: StaffProfileScreen(roleLabel: 'Organisation'),
+  UserRole.donor => Theme(
+    data: AppTheme.forRole(AppTheme.donor),
+    child: const DonorShell(),
   ),
-  UserRole.hospital => const StaffShell(
-    mainPage: HospitalDashboardScreen(),
-    profilePage: StaffProfileScreen(roleLabel: 'Hospital'),
+  UserRole.admin => Theme(
+    data: AppTheme.forRole(AppTheme.organisation),
+    child: const StaffShell(
+      mainPage: AdminDashboardScreen(),
+      profilePage: StaffProfileScreen(roleLabel: 'Organisation'),
+    ),
   ),
-  UserRole.systemAdmin => const StaffShell(
-    mainPage: SystemAdminDashboardScreen(),
-    profilePage: SystemAdminProfileScreen(),
+  UserRole.hospital => Theme(
+    data: AppTheme.forRole(AppTheme.hospital),
+    child: const StaffShell(
+      mainPage: HospitalDashboardScreen(),
+      profilePage: StaffProfileScreen(roleLabel: 'Hospital'),
+    ),
+  ),
+  UserRole.systemAdmin => Theme(
+    data: AppTheme.forRole(AppTheme.systemAdmin),
+    child: const StaffShell(
+      mainPage: SystemAdminDashboardScreen(),
+      profilePage: SystemAdminProfileScreen(),
+    ),
   ),
 };

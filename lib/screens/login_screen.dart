@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/remote/auth_repository.dart';
 import '../data/remote/auth_error_message.dart';
 import '../data/remote/supabase_service.dart';
+import '../widgets/my_darah_brand.dart';
 import 'registration_screen.dart';
 import 'role_home.dart';
 
@@ -70,6 +71,72 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> forgotPassword() async {
+    final initialEmail = emailController.text.trim();
+    final controller = TextEditingController(text: initialEmail);
+    final email = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your account email. We will send you a secure reset link.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Send link'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (email == null || email.isEmpty || !mounted) return;
+    final client = SupabaseService.client;
+    if (client == null) return;
+    setState(() => isLoading = true);
+    try {
+      await client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'io.supabase.mydarah://reset-password',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'If an account exists for that email, a reset link has been sent.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Icon(Icons.bloodtype, size: 90, color: Colors.red),
+            const MyDarahMark(size: 92),
             const SizedBox(height: 20),
             const Text(
               'Welcome Back',
@@ -109,8 +176,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: isLoading ? null : forgotPassword,
+                child: const Text('Forgot password?'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
               onPressed: isLoading ? null : login,
               child: isLoading
                   ? const SizedBox.square(

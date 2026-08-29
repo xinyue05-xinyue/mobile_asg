@@ -8,6 +8,7 @@ import '../../models/profile_overview.dart';
 import '../../models/donor_level.dart';
 import '../../models/role_request.dart';
 import 'edit_profile_screen.dart';
+import 'benefits_screen.dart';
 import 'history_screens.dart';
 import 'role_application_screen.dart';
 import 'reward_store_screen.dart';
@@ -173,9 +174,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     _RewardProgressCard(
-                      points: value.rewardPoints,
                       donationCount: value.donations.length,
-                      onRedeem: openRewards,
+                      onBenefits: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DonorBenefitsScreen(
+                            donationCount: value.donations.length,
+                            points: value.rewardPoints,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Card(
@@ -212,6 +220,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     RewardHistoryScreen(rewards: value.rewards),
                               ),
                             ),
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.redeem_outlined),
+                            title: const Text('Browse rewards'),
+                            subtitle: Text(
+                              '${value.rewardPoints} points available to redeem',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: openRewards,
                           ),
                         ],
                       ),
@@ -268,14 +286,12 @@ class _MetricCard extends StatelessWidget {
 
 class _RewardProgressCard extends StatelessWidget {
   const _RewardProgressCard({
-    required this.points,
     required this.donationCount,
-    required this.onRedeem,
+    required this.onBenefits,
   });
 
-  final int points;
   final int donationCount;
-  final VoidCallback onRedeem;
+  final VoidCallback onBenefits;
 
   @override
   Widget build(BuildContext context) {
@@ -299,9 +315,7 @@ class _RewardProgressCard extends StatelessWidget {
                         DonorLevel.name(donationCount),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      Text(
-                        '$donationCount verified donations • $points available points',
-                      ),
+                      Text('$donationCount verified donations'),
                     ],
                   ),
                 ),
@@ -321,37 +335,14 @@ class _RewardProgressCard extends StatelessWidget {
                   ? 'Highest recognition level reached.'
                   : '$remaining more verified donation${remaining == 1 ? '' : 's'} to ${DonorLevel.name(target)}.',
             ),
-            const SizedBox(height: 14),
-            const Divider(),
-            const SizedBox(height: 8),
-            Text(
-              'Level benefits',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Your donor level is based on verified donation count, so redeeming '
-              'points will never reduce your level. Every verified event or '
-              'emergency donation earns 100 redeemable points.',
-            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onRedeem,
-                icon: const Icon(Icons.redeem_outlined),
-                label: const Text('Browse rewards'),
+              child: OutlinedButton.icon(
+                onPressed: onBenefits,
+                icon: const Icon(Icons.workspace_premium_outlined),
+                label: const Text('View my benefits & level'),
               ),
-            ),
-            const SizedBox(height: 10),
-            const Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Chip(label: Text('Bronze · 1 donation')),
-                Chip(label: Text('Silver · 5 donations')),
-                Chip(label: Text('Gold · 10 donations')),
-              ],
             ),
           ],
         ),

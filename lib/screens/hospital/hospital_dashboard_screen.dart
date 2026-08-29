@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/hospital_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -139,13 +140,8 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Hospital Portal'),
+        title: const Text('Hospital Emergency'),
         actions: const [StatisticsIconButton(), NotificationButton()],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: createRequest,
-        icon: const Icon(Icons.add_alert_outlined),
-        label: const Text('New request'),
       ),
       body: FutureBuilder<HospitalDashboardData>(
         future: data,
@@ -184,12 +180,18 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
                 const SignedInIdentityCard(roleLabel: 'Hospital staff'),
-                const SizedBox(height: 12),
-                Text(
-                  'Emergency Dashboard',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                const SizedBox(height: 16),
+                _HospitalHero(
+                  activeCount: activeCount,
+                  responseCount: value.totalResponses,
+                  onCreate: createRequest,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                Text(
+                  'Today at a glance',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 10),
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -264,6 +266,81 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _HospitalHero extends StatelessWidget {
+  const _HospitalHero({
+    required this.activeCount,
+    required this.responseCount,
+    required this.onCreate,
+  });
+
+  final int activeCount;
+  final int responseCount;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppTheme.hospital, Color(0xFFB72E68)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.hospital.withValues(alpha: .24),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.emergency_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'Emergency response centre',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '$activeCount active request${activeCount == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$responseCount donor response${responseCount == 1 ? '' : 's'} received',
+            style: TextStyle(color: Colors.white.withValues(alpha: .86)),
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: onCreate,
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFFB72E68),
+            ),
+            icon: const Icon(Icons.add_alert_rounded),
+            label: const Text('Create emergency request'),
+          ),
+        ],
       ),
     );
   }

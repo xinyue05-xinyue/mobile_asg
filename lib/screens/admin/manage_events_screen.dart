@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/event_schedule.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_event_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_event.dart';
@@ -83,6 +84,106 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
     }
   }
 
+  Widget eventCard(DonationEvent event) {
+    final status = displayStatus(event);
+    final canModify = status == 'Upcoming';
+    return Card(
+      color: AppTheme.organisationPalette[0],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(event.title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on_outlined, size: 19),
+                const SizedBox(width: 8),
+                Expanded(child: Text(event.venue)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.calendar_month_outlined, size: 19),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(eventSchedule(event.startsAt, event.endsAt)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.info_outline, size: 19),
+                const SizedBox(width: 8),
+                Text('Status: $status'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EventRegistrationsScreen(event: event),
+                    ),
+                  ),
+                  child: const Text('Registrations'),
+                ),
+                if (canModify) ...[
+                  OutlinedButton(
+                    onPressed: () => openForm(event),
+                    child: const Text('Edit'),
+                  ),
+                  TextButton(
+                    onPressed: () => cancel(event),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget eventSection(
+    String title,
+    List<DonationEvent> items, {
+    required bool expanded,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: AppTheme.organisationPalette[0],
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        iconColor: AppTheme.organisation,
+        collapsedIconColor: AppTheme.organisation,
+        backgroundColor: AppTheme.organisationPalette[0],
+        collapsedBackgroundColor: AppTheme.organisationPalette[0],
+        initiallyExpanded: expanded,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text('${items.length} event${items.length == 1 ? '' : 's'}'),
+        childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        children: items.isEmpty
+            ? const [
+                Padding(
+                  padding: EdgeInsets.all(18),
+                  child: Text('No events in this group.'),
+                ),
+              ]
+            : items.map(eventCard).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,84 +208,31 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
           if (items.isEmpty) {
             return const Center(child: Text('No events created yet.'));
           }
-          return ListView.separated(
+          final inProgress = items
+              .where((event) => displayStatus(event) == 'In progress')
+              .toList();
+          final upcoming = items
+              .where((event) => displayStatus(event) == 'Upcoming')
+              .toList();
+          final ended = items
+              .where((event) => displayStatus(event) == 'Ended')
+              .toList();
+          final cancelled = items
+              .where((event) => displayStatus(event) == 'Cancelled')
+              .toList();
+          return ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final event = items[index];
-              final status = displayStatus(event);
-              final canModify = status == 'Upcoming';
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        event.title,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.location_on_outlined, size: 19),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(event.venue)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.calendar_month_outlined, size: 19),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              eventSchedule(event.startsAt, event.endsAt),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.info_outline, size: 19),
-                          const SizedBox(width: 8),
-                          Text('Status: $status'),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EventRegistrationsScreen(event: event),
-                              ),
-                            ),
-                            child: const Text('Registrations'),
-                          ),
-                          if (canModify) ...[
-                            OutlinedButton(
-                              onPressed: () => openForm(event),
-                              child: const Text('Edit'),
-                            ),
-                            TextButton(
-                              onPressed: () => cancel(event),
-                              child: const Text('Cancel'),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+            children: [
+              eventSection(
+                'In progress',
+                inProgress,
+                expanded: inProgress.isNotEmpty,
+              ),
+              eventSection('Upcoming', upcoming, expanded: inProgress.isEmpty),
+              eventSection('Ended', ended, expanded: false),
+              if (cancelled.isNotEmpty)
+                eventSection('Cancelled', cancelled, expanded: false),
+            ],
           );
         },
       ),

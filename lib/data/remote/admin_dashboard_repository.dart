@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../models/donation_event.dart';
+
 class AdminDashboardRepository {
   const AdminDashboardRepository(this.client);
 
@@ -11,28 +13,65 @@ class AdminDashboardRepository {
 
     final eventRows = await client
         .from('donation_events')
-        .select('id, status, starts_at')
+        .select(
+          'id, title, venue, starts_at, ends_at, status, description, '
+          'latitude, longitude, image_path, created_by, publish_at',
+        )
         .eq('created_by', user.id);
-    final now = DateTime.now().toUtc();
+    final now = DateTime.now();
+    final events = eventRows.map(DonationEvent.fromMap).toList();
+    // "Open" events include both upcoming and currently running events.
+    // This prevents the dashboard from showing zero as soon as an event starts.
     final upcomingCount = eventRows.where((event) {
-      return event['status'] == 'upcoming' &&
-          DateTime.parse(event['starts_at']! as String).toUtc().isAfter(now);
+      return event['status'] != 'cancelled' &&
+          DateTime.parse(event['ends_at']! as String).toLocal().isAfter(now);
     }).length;
     final eventIds = eventRows.map((event) => event['id']! as String).toList();
 
     var registrationCount = 0;
+    var attendedCount = 0;
+    final bloodGroups = <String, int>{};
     if (eventIds.isNotEmpty) {
       final registrationRows = await client
           .from('event_registrations')
-          .select('id')
+          .select(
+            'id, status, donor:profiles!event_registrations_donor_id_fkey('
+            'blood_type)',
+          )
           .inFilter('event_id', eventIds)
           .neq('status', 'cancelled');
       registrationCount = registrationRows.length;
+      for (final row in registrationRows) {
+        final status = row['status'] as String?;
+        if (status == 'attended' || status == 'verified') attendedCount++;
+        final donor = row['donor'] as Map<String, Object?>?;
+        final bloodType = donor?['blood_type'] as String?;
+        if (bloodType != null && bloodType.isNotEmpty) {
+          bloodGroups[bloodType] = (bloodGroups[bloodType] ?? 0) + 1;
+        }
+      }
+    }
+
+    DonationEvent? currentEvent;
+    DonationEvent? nextEvent;
+    final ordered = [...events]
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    for (final event in ordered) {
+      if (event.status == 'cancelled') continue;
+      if (!now.isBefore(event.startsAt) && now.isBefore(event.endsAt)) {
+        currentEvent = event;
+        break;
+      }
+      if (event.startsAt.isAfter(now)) nextEvent ??= event;
     }
 
     return AdminDashboardSummary(
       upcomingEvents: upcomingCount,
       donorRegistrations: registrationCount,
+      attendedDonors: attendedCount,
+      bloodGroups: bloodGroups,
+      focusEvent: currentEvent ?? nextEvent,
+      focusEventIsActive: currentEvent != null,
     );
   }
 
@@ -75,6 +114,79 @@ class AdminDashboardRepository {
       );
     }).toList();
   }
+
+  Future<List<AdminEventAnalytics>> getEventAnalytics() async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    final eventRows = await client
+        .from('donation_events')
+        .select('id, title, starts_at, ends_at, status')
+        .eq('created_by', user.id)
+        .neq('status', 'cancelled')
+        .order('starts_at', ascending: false);
+    if (eventRows.isEmpty) return const [];
+
+    final eventIds = eventRows.map((row) => row['id']! as String).toList();
+    final registrationRows = await client
+        .from('event_registrations')
+        .select(
+          'event_id, status, donor:profiles!event_registrations_donor_id_fkey('
+          'blood_type)',
+        )
+        .inFilter('event_id', eventIds)
+        .neq('status', 'cancelled');
+
+    final registrations = <String, int>{};
+    final verified = <String, int>{};
+    final bloodGroups = <String, Map<String, int>>{};
+    for (final row in registrationRows) {
+      final eventId = row['event_id']! as String;
+      registrations[eventId] = (registrations[eventId] ?? 0) + 1;
+      final status = row['status'] as String?;
+      if (status == 'attended' || status == 'verified') {
+        verified[eventId] = (verified[eventId] ?? 0) + 1;
+      }
+      final donor = row['donor'] as Map<String, Object?>?;
+      final bloodType = donor?['blood_type'] as String?;
+      if (bloodType != null && bloodType.isNotEmpty) {
+        final groups = bloodGroups.putIfAbsent(eventId, () => {});
+        groups[bloodType] = (groups[bloodType] ?? 0) + 1;
+      }
+    }
+
+    return eventRows.map((row) {
+      final id = row['id']! as String;
+      return AdminEventAnalytics(
+        eventId: id,
+        title: row['title']! as String,
+        startsAt: DateTime.parse(row['starts_at']! as String).toLocal(),
+        endsAt: DateTime.parse(row['ends_at']! as String).toLocal(),
+        registrations: registrations[id] ?? 0,
+        verified: verified[id] ?? 0,
+        bloodGroups: bloodGroups[id] ?? const {},
+      );
+    }).toList();
+  }
+}
+
+class AdminEventAnalytics {
+  const AdminEventAnalytics({
+    required this.eventId,
+    required this.title,
+    required this.startsAt,
+    required this.endsAt,
+    required this.registrations,
+    required this.verified,
+    required this.bloodGroups,
+  });
+
+  final String eventId;
+  final String title;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final int registrations;
+  final int verified;
+  final Map<String, int> bloodGroups;
 }
 
 class AdminRegistrationDetail {
@@ -101,8 +213,16 @@ class AdminDashboardSummary {
   const AdminDashboardSummary({
     required this.upcomingEvents,
     required this.donorRegistrations,
+    this.attendedDonors = 0,
+    this.bloodGroups = const {},
+    this.focusEvent,
+    this.focusEventIsActive = false,
   });
 
   final int upcomingEvents;
   final int donorRegistrations;
+  final int attendedDonors;
+  final Map<String, int> bloodGroups;
+  final DonationEvent? focusEvent;
+  final bool focusEventIsActive;
 }
