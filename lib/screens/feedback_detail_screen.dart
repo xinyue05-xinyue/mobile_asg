@@ -1,14 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../app/theme/app_theme.dart';
 import '../data/remote/feedback_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/user_feedback.dart';
 import '../widgets/event_schedule.dart';
 
 class FeedbackDetailScreen extends StatefulWidget {
-  const FeedbackDetailScreen({super.key, required this.item});
+  const FeedbackDetailScreen({
+    super.key,
+    required this.item,
+    this.useDonorColors = false,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+  });
   final UserFeedback item;
+  final bool useDonorColors;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
   @override
   State<FeedbackDetailScreen> createState() => _FeedbackDetailScreenState();
 }
@@ -87,7 +97,36 @@ class _FeedbackDetailScreenState extends State<FeedbackDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Feedback details')),
+    backgroundColor: widget.useDonorColors
+        ? AppTheme.donorBackground
+        : widget.useOrganisationColors
+        ? AppTheme.organisationBackground
+        : widget.useHospitalColors
+        ? AppTheme.hospitalBackground
+        : null,
+    appBar: AppBar(
+      backgroundColor: widget.useDonorColors
+          ? AppTheme.donorHeader
+          : widget.useOrganisationColors
+          ? AppTheme.organisationHeader
+          : widget.useHospitalColors
+          ? AppTheme.hospitalHeader
+          : null,
+      foregroundColor:
+          widget.useDonorColors ||
+              widget.useOrganisationColors ||
+              widget.useHospitalColors
+          ? Colors.white
+          : null,
+      titleTextStyle: widget.useDonorColors
+          ? AppTheme.donorHeaderTitleStyle
+          : widget.useOrganisationColors
+          ? AppTheme.organisationHeaderTitleStyle
+          : widget.useHospitalColors
+          ? AppTheme.hospitalHeaderTitleStyle
+          : null,
+      title: const Text('Feedback details'),
+    ),
     body: ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),

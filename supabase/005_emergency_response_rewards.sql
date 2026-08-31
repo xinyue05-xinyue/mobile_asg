@@ -155,7 +155,7 @@ begin
   )
   values (
     selected_response.donor_id,
-    100,
+    150,
     'earned',
     new_donation_id
   );

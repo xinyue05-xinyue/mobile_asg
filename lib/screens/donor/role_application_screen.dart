@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/role_request_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/user_role.dart';
@@ -162,7 +163,13 @@ class _RoleApplicationScreenState extends State<RoleApplicationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Apply for staff access')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Apply for staff access'),
+      ),
       body: Form(
         key: formKey,
         child: ListView(

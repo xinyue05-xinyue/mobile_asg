@@ -82,10 +82,17 @@ class _DonorHomeScreenState extends State<DonorHomeScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppTheme.donorBackground,
     appBar: AppBar(
+      backgroundColor: AppTheme.donorHeader,
+      foregroundColor: Colors.white,
+      titleTextStyle: AppTheme.donorHeaderTitleStyle,
       automaticallyImplyLeading: false,
       title: const MyDarahWordmark(markSize: 32, onDark: true),
-      actions: const [StatisticsIconButton(), NotificationButton()],
+      actions: const [
+        StatisticsIconButton(useDonorColors: true),
+        NotificationButton(useDonorColors: true),
+      ],
     ),
     body: FutureBuilder<_HomeData>(
       future: data,

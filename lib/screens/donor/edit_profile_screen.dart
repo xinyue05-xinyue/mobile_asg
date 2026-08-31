@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/profile_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donor_profile.dart';
@@ -90,7 +91,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Edit profile'),
+      ),
       body: Form(
         key: formKey,
         child: ListView(

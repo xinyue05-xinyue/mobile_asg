@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/supabase_service.dart';
 
@@ -97,7 +98,13 @@ class _CreateEmergencyScreenState extends State<CreateEmergencyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create emergency request')),
+      backgroundColor: AppTheme.hospitalBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.hospitalHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.hospitalHeaderTitleStyle,
+        title: const Text('Create emergency request'),
+      ),
       body: Form(
         key: formKey,
         child: ListView(
@@ -154,6 +161,12 @@ class _CreateEmergencyScreenState extends State<CreateEmergencyScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: isSaving ? null : save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.hospital,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.hospitalPalette[1],
+                disabledForegroundColor: AppTheme.hospitalHeader,
+              ),
               child: isSaving
                   ? const SizedBox.square(
                       dimension: 22,

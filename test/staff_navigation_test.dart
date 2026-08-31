@@ -26,6 +26,25 @@ void main() {
     expect(find.text('Dashboard content'), findsOneWidget);
   });
 
+  testWidgets('centre QR action opens the configured scanner page', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: StaffShell(
+          mainPage: Scaffold(body: Text('Dashboard content')),
+          profilePage: Scaffold(body: Text('Profile content')),
+          scannerPage: Scaffold(body: Text('Scanner content')),
+        ),
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('QR attendance scanner'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scanner content'), findsOneWidget);
+  });
+
   testWidgets('system admin profile includes inbox and logout confirmation', (
     tester,
   ) async {

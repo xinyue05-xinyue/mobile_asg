@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_event.dart';
@@ -9,9 +10,9 @@ import '../../models/event_registration.dart';
 import '../../models/attendance_qr.dart';
 
 class QrAttendanceScannerScreen extends StatefulWidget {
-  const QrAttendanceScannerScreen({super.key, required this.event});
+  const QrAttendanceScannerScreen({super.key, this.event});
 
-  final DonationEvent event;
+  final DonationEvent? event;
 
   @override
   State<QrAttendanceScannerScreen> createState() =>
@@ -36,7 +37,51 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
     return '$day/$month/${date.year}';
   }
 
-  Future<bool> confirmDonor(EventRegistration registration) async {
+  Future<DonationEvent> resolveEvent(
+    AttendanceQrPayload payload,
+    SupabaseClient client,
+  ) async {
+    if (widget.event != null) {
+      if (payload.eventId != widget.event!.id.toLowerCase()) {
+        throw const FormatException(
+          'This QR belongs to a different event. Use the centre scanner to detect its event automatically.',
+        );
+      }
+      return widget.event!;
+    }
+
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    final row = await client
+        .from('donation_events')
+        .select(
+          'id, title, venue, starts_at, ends_at, status, description, '
+          'latitude, longitude, image_path, created_by, publish_at',
+        )
+        .eq('id', payload.eventId)
+        .eq('created_by', user.id)
+        .maybeSingle();
+    if (row == null) {
+      throw const FormatException(
+        'This QR is for an event that does not belong to your organisation.',
+      );
+    }
+    final event = DonationEvent.fromMap(row);
+    if (event.status == 'cancelled') {
+      throw const FormatException('This event has been cancelled.');
+    }
+    if (event.startsAt.isAfter(DateTime.now())) {
+      throw FormatException(
+        'Attendance for ${event.title} can only be verified after the event starts.',
+      );
+    }
+    return event;
+  }
+
+  Future<bool> confirmDonor(
+    DonationEvent event,
+    EventRegistration registration,
+  ) async {
     if (!mounted) return false;
     return await showDialog<bool>(
           context: context,
@@ -58,6 +103,13 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event_outlined),
+                    title: const Text('Detected event'),
+                    subtitle: Text('${event.title}\n${event.venue}'),
+                    isThreeLine: true,
+                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.bloodtype_outlined),
@@ -102,15 +154,17 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
     try {
       await controller.stop();
       if (!mounted) return;
-      final donorId = AttendanceQr.donorForEvent(value, widget.event.id);
+      final payload = AttendanceQr.parse(value);
       final client = SupabaseService.client;
       if (client == null) {
         await showError('Please log in again.');
         return;
       }
+      final event = await resolveEvent(payload, client);
+      final donorId = payload.donorId;
       final repository = EventRegistrationRepository(client);
       final registration = await repository.getForEventAndDonor(
-        eventId: widget.event.id,
+        eventId: event.id,
         donorId: donorId,
       );
       if (!mounted) return;
@@ -120,15 +174,15 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
         await showError('${registration.donorName} is already verified.');
       } else if (registration.status != 'registered') {
         await showError('This registration is ${registration.status}.');
-      } else if (await confirmDonor(registration)) {
+      } else if (await confirmDonor(event, registration)) {
         if (!mounted) return;
-        await repository.verifyQr(eventId: widget.event.id, donorId: donorId);
+        await repository.verifyQr(eventId: event.id, donorId: donorId);
         verifiedCount++;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '${registration.donorName} verified. 100 points awarded and eligibility set three months later.',
+                '${registration.donorName} verified for ${event.title}. 100 points awarded and eligibility set three months later.',
               ),
             ),
           );
@@ -186,7 +240,11 @@ class _QrAttendanceScannerScreenState extends State<QrAttendanceScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.organisationBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
         title: const Text('Scan donor QR'),
         leading: IconButton(
           onPressed: () => Navigator.pop(context, verifiedCount > 0),

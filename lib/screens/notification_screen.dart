@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/app_theme.dart';
 import '../data/remote/notification_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/app_notification.dart';
 
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key});
+  const NotificationScreen({
+    super.key,
+    this.useDonorColors = false,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+    this.useSystemAdminColors = false,
+  });
+
+  final bool useDonorColors;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
@@ -67,10 +79,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: widget.useDonorColors
+          ? AppTheme.donorBackground
+          : widget.useOrganisationColors
+          ? AppTheme.organisationBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : widget.useSystemAdminColors
+          ? AppTheme.systemAdminBackground
+          : null,
       appBar: AppBar(
+        backgroundColor: widget.useDonorColors
+            ? AppTheme.donorHeader
+            : widget.useOrganisationColors
+            ? AppTheme.organisationHeader
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeader
+            : widget.useSystemAdminColors
+            ? AppTheme.systemAdminHeader
+            : null,
+        foregroundColor:
+            widget.useDonorColors ||
+                widget.useOrganisationColors ||
+                widget.useHospitalColors ||
+                widget.useSystemAdminColors
+            ? Colors.white
+            : null,
+        titleTextStyle: widget.useDonorColors
+            ? AppTheme.donorHeaderTitleStyle
+            : widget.useOrganisationColors
+            ? AppTheme.organisationHeaderTitleStyle
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : widget.useSystemAdminColors
+            ? AppTheme.systemAdminHeaderTitleStyle
+            : null,
         title: const Text('Notifications'),
         actions: [
-          TextButton(onPressed: markAllRead, child: const Text('Read all')),
+          TextButton(
+            onPressed: markAllRead,
+            style:
+                widget.useDonorColors ||
+                    widget.useOrganisationColors ||
+                    widget.useHospitalColors ||
+                    widget.useSystemAdminColors
+                ? TextButton.styleFrom(foregroundColor: Colors.white)
+                : null,
+            child: const Text('Read all'),
+          ),
         ],
       ),
       body: FutureBuilder<List<AppNotification>>(

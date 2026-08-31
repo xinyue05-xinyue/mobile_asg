@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/reward_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/reward_item.dart';
@@ -47,6 +48,7 @@ class _RewardStoreScreenState extends State<RewardStoreScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.donorBackground,
         title: const Text('Redeem reward?'),
         content: Text(
           '${item.name} costs ${item.pointsCost} points. '
@@ -73,6 +75,7 @@ class _RewardStoreScreenState extends State<RewardStoreScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
+          backgroundColor: AppTheme.donorBackground,
           title: const Text('Reward redeemed'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -120,7 +123,13 @@ class _RewardStoreScreenState extends State<RewardStoreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Redeem Rewards')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Redeem Rewards'),
+      ),
       body: FutureBuilder<_RewardStoreData>(
         future: data,
         builder: (context, snapshot) {

@@ -5,7 +5,18 @@ import '../data/remote/supabase_service.dart';
 import '../screens/notification_screen.dart';
 
 class NotificationButton extends StatefulWidget {
-  const NotificationButton({super.key});
+  const NotificationButton({
+    super.key,
+    this.useDonorColors = false,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+    this.useSystemAdminColors = false,
+  });
+
+  final bool useDonorColors;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   State<NotificationButton> createState() => _NotificationButtonState();
@@ -29,7 +40,14 @@ class _NotificationButtonState extends State<NotificationButton> {
   Future<void> openNotifications() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const NotificationScreen()),
+      MaterialPageRoute(
+        builder: (_) => NotificationScreen(
+          useDonorColors: widget.useDonorColors,
+          useOrganisationColors: widget.useOrganisationColors,
+          useHospitalColors: widget.useHospitalColors,
+          useSystemAdminColors: widget.useSystemAdminColors,
+        ),
+      ),
     );
     if (mounted) {
       setState(() {

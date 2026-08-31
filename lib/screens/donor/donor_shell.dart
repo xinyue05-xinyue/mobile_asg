@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../donor_home_screen.dart';
 import 'centres_screen.dart';
 import 'events_screen.dart';
@@ -34,6 +35,7 @@ class _DonorShellState extends State<DonorShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.donorBackground,
       body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,

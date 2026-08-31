@@ -10,7 +10,6 @@ import 'donor_analysis_screen.dart';
 import 'event_registrations_screen.dart';
 import 'manage_centres_screen.dart';
 import 'manage_events_screen.dart';
-import 'qr_attendance_scanner_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -54,22 +53,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (mounted) await refresh();
   }
 
-  Future<void> scan(DonationEvent event) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => QrAttendanceScannerScreen(event: event),
-      ),
-    );
-    if (mounted) await refresh();
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppTheme.organisationBackground,
     appBar: AppBar(
+      backgroundColor: AppTheme.organisationHeader,
+      foregroundColor: Colors.white,
+      titleTextStyle: AppTheme.organisationHeaderTitleStyle,
       automaticallyImplyLeading: false,
       title: const Text('Organisation workspace'),
-      actions: const [NotificationButton()],
+      actions: const [NotificationButton(useOrganisationColors: true)],
     ),
     body: FutureBuilder<AdminDashboardSummary>(
       future: summary,
@@ -134,9 +127,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 _FocusEventCard(
                   event: value.focusEvent!,
                   active: value.focusEventIsActive,
-                  onScan: value.focusEventIsActive
-                      ? () => scan(value.focusEvent!)
-                      : null,
                   onRegistrations: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -158,17 +148,15 @@ class _FocusEventCard extends StatelessWidget {
   const _FocusEventCard({
     required this.event,
     required this.active,
-    required this.onScan,
     required this.onRegistrations,
   });
   final DonationEvent event;
   final bool active;
-  final VoidCallback? onScan;
   final VoidCallback onRegistrations;
 
   @override
   Widget build(BuildContext context) => Card(
-    color: AppTheme.organisation.withValues(alpha: .08),
+    color: Colors.white,
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -195,12 +183,6 @@ class _FocusEventCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(event.venue, maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 14),
-          if (active)
-            FilledButton.icon(
-              onPressed: onScan,
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan donor QR'),
-            ),
           TextButton.icon(
             onPressed: onRegistrations,
             icon: const Icon(Icons.people_outline),

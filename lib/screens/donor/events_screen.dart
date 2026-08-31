@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/local/event_reminder_service.dart';
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/profile_repository.dart';
@@ -121,7 +122,13 @@ class _EventsScreenState extends State<EventsScreen> {
       context,
       MaterialPageRoute(
         builder: (sheetContext) => Scaffold(
-          appBar: AppBar(title: Text(event.title)),
+          backgroundColor: AppTheme.donorBackground,
+          appBar: AppBar(
+            backgroundColor: AppTheme.donorHeader,
+            foregroundColor: Colors.white,
+            titleTextStyle: AppTheme.donorHeaderTitleStyle,
+            title: Text(event.title),
+          ),
           body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -160,6 +167,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   InstitutionDetailsTile(
                     ownerId: event.createdBy,
                     label: 'Organised by',
+                    useDonorColors: true,
                     cachedName: event.organiserName,
                   ),
                   ListTile(
@@ -250,6 +258,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
+                      style: AppTheme.donorPrimaryButtonStyle,
                       onPressed:
                           registrationStatus != null ||
                               registeringEventId != null ||
@@ -371,6 +380,7 @@ class _EventsScreenState extends State<EventsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.donorBackground,
         title: const Text('Confirm registration'),
         content: Text(
           'Register for ${event.title} at ${event.venue} on '
@@ -382,6 +392,7 @@ class _EventsScreenState extends State<EventsScreen> {
             child: const Text('Not now'),
           ),
           FilledButton(
+            style: AppTheme.donorPrimaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Register'),
           ),
@@ -425,54 +436,65 @@ class _EventsScreenState extends State<EventsScreen> {
     if (!mounted) return;
     final choice = await showModalBottomSheet<_ReminderChoice>(
       context: context,
+      backgroundColor: AppTheme.donorBackground,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                afterRegistration ? 'Add an event reminder?' : 'Event reminder',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text('${event.title} starts ${dateLabel(event.startsAt)}.'),
-              const SizedBox(height: 6),
-              Text(
-                EventReminderService.emailEnabled
-                    ? 'Send to your login email and the app inbox. On mobile, also schedule a phone notification when permission is allowed.'
-                    : 'Phone notifications are available. Email reminders require server setup.',
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.today_outlined),
-                title: const Text('1 day before'),
-                onTap: () =>
-                    Navigator.pop(sheetContext, _ReminderChoice.oneDayBefore),
-              ),
-              ListTile(
-                leading: const Icon(Icons.schedule_outlined),
-                title: const Text('2 hours before'),
-                onTap: () =>
-                    Navigator.pop(sheetContext, _ReminderChoice.twoHoursBefore),
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit_calendar_outlined),
-                title: const Text('Choose custom date and time'),
-                onTap: () =>
-                    Navigator.pop(sheetContext, _ReminderChoice.custom),
-              ),
-              if (existing != null)
-                ListTile(
-                  leading: const Icon(Icons.alarm_off_outlined),
-                  title: const Text('Cancel current reminder'),
-                  subtitle: Text(dateLabel(existing)),
-                  onTap: () =>
-                      Navigator.pop(sheetContext, _ReminderChoice.cancel),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .85,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  afterRegistration
+                      ? 'Add an event reminder?'
+                      : 'Event reminder',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-            ],
+                const SizedBox(height: 6),
+                Text('${event.title} starts ${dateLabel(event.startsAt)}.'),
+                const SizedBox(height: 6),
+                Text(
+                  EventReminderService.emailEnabled
+                      ? 'Send to your login email and the app inbox. On mobile, also schedule a phone notification when permission is allowed.'
+                      : 'Phone notifications are available. Email reminders require server setup.',
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const Icon(Icons.today_outlined),
+                  title: const Text('1 day before'),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _ReminderChoice.oneDayBefore),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.schedule_outlined),
+                  title: const Text('2 hours before'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _ReminderChoice.twoHoursBefore,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit_calendar_outlined),
+                  title: const Text('Choose custom date and time'),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, _ReminderChoice.custom),
+                ),
+                if (existing != null)
+                  ListTile(
+                    leading: const Icon(Icons.alarm_off_outlined),
+                    title: const Text('Cancel current reminder'),
+                    subtitle: Text(dateLabel(existing)),
+                    onTap: () =>
+                        Navigator.pop(sheetContext, _ReminderChoice.cancel),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -622,6 +644,7 @@ class _EventsScreenState extends State<EventsScreen> {
             InstitutionDetailsTile(
               ownerId: event.createdBy,
               label: 'Organised by',
+              useDonorColors: true,
               cachedName: event.organiserName,
             ),
             if (registered && event.startsAt.isAfter(DateTime.now()))
@@ -704,6 +727,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
                 const Spacer(),
                 FilledButton.icon(
+                  style: AppTheme.donorPrimaryButtonStyle,
                   onPressed:
                       registered ||
                           !eligible ||
@@ -742,7 +766,11 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.donorBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
         automaticallyImplyLeading: false,
         title: const Text('Donation Events'),
       ),
@@ -797,6 +825,10 @@ class _EventsScreenState extends State<EventsScreen> {
                 const SizedBox(height: 12),
                 Card(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: AppTheme.donorMutedOutline),
+                  ),
                   child: ExpansionTile(
                     enabled: accountAvailable,
                     shape: const Border(),

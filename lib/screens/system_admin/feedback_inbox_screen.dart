@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../widgets/event_schedule.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/feedback_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/user_feedback.dart';
@@ -72,6 +73,12 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.systemAdminBackground,
+          surfaceTintColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
           title: Text(item.userName),
           content: SingleChildScrollView(
             child: Column(
@@ -149,10 +156,17 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.systemAdmin,
+              ),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.systemAdmin,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Save'),
             ),
           ],
@@ -207,7 +221,13 @@ class _FeedbackInboxScreenState extends State<FeedbackInboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback inbox')),
+      backgroundColor: AppTheme.systemAdminBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.systemAdminHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.systemAdminHeaderTitleStyle,
+        title: const Text('Feedback inbox'),
+      ),
       body: FutureBuilder<List<UserFeedback>>(
         future: feedback,
         builder: (context, snapshot) {

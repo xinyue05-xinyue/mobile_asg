@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../models/donor_level.dart';
 
 class DonorBenefitsScreen extends StatefulWidget {
@@ -58,7 +59,13 @@ class _DonorBenefitsScreenState extends State<DonorBenefitsScreen> {
   Widget build(BuildContext context) {
     final donationCount = widget.donationCount;
     return Scaffold(
-      appBar: AppBar(title: const Text('My benefits & level')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('My benefits & level'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

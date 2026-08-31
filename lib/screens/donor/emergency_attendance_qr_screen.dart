@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../models/emergency_attendance_qr.dart';
 import '../../models/emergency_request.dart';
 
@@ -21,7 +22,13 @@ class EmergencyAttendanceQrScreen extends StatelessWidget {
       donorId: donorId,
     ).value;
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency donation QR')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Emergency donation QR'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

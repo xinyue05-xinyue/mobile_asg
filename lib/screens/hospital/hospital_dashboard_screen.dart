@@ -141,7 +141,10 @@ class _HospitalDashboardScreenState extends State<HospitalDashboardScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Hospital Emergency'),
-        actions: const [StatisticsIconButton(), NotificationButton()],
+        actions: const [
+          StatisticsIconButton(useHospitalColors: true),
+          NotificationButton(useHospitalColors: true),
+        ],
       ),
       body: FutureBuilder<HospitalDashboardData>(
         future: data,

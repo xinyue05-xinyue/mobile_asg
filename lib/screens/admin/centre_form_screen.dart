@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_centre_repository.dart';
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -242,7 +243,11 @@ class _CentreFormScreenState extends State<CentreFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.organisationBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
         title: Text(
           widget.centre == null ? 'Add event venue' : 'Edit event venue',
         ),

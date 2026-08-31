@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../app/theme/app_theme.dart';
 import '../data/remote/organisation_profile_repository.dart';
 import '../data/remote/official_centre_repository.dart';
 import '../data/remote/supabase_service.dart';
@@ -17,9 +18,13 @@ class InstitutionProfileFormScreen extends StatefulWidget {
     super.key,
     required this.roleLabel,
     this.profile,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
   });
   final String roleLabel;
   final OrganisationProfile? profile;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
 
   @override
   State<InstitutionProfileFormScreen> createState() =>
@@ -151,7 +156,28 @@ class _InstitutionProfileFormScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Edit ${widget.roleLabel} profile')),
+      backgroundColor: widget.useOrganisationColors
+          ? AppTheme.organisationBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : null,
+      appBar: AppBar(
+        backgroundColor: widget.useOrganisationColors
+            ? AppTheme.organisationHeader
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeader
+            : null,
+        foregroundColor:
+            widget.useOrganisationColors || widget.useHospitalColors
+            ? Colors.white
+            : null,
+        titleTextStyle: widget.useOrganisationColors
+            ? AppTheme.organisationHeaderTitleStyle
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : null,
+        title: Text('Edit ${widget.roleLabel} profile'),
+      ),
       body: Form(
         key: formKey,
         child: ListView(
@@ -262,6 +288,14 @@ class _InstitutionProfileFormScreenState
             const SizedBox(height: 20),
             FilledButton(
               onPressed: saving ? null : save,
+              style: widget.useHospitalColors
+                  ? FilledButton.styleFrom(
+                      backgroundColor: AppTheme.hospital,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppTheme.hospitalPalette[1],
+                      disabledForegroundColor: AppTheme.hospitalHeader,
+                    )
+                  : null,
               child: saving
                   ? const SizedBox.square(
                       dimension: 20,

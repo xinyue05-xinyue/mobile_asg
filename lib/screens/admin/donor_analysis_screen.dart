@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
 
@@ -38,7 +39,13 @@ class _DonorAnalysisScreenState extends State<DonorAnalysisScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Donor analysis')),
+    backgroundColor: AppTheme.organisationBackground,
+    appBar: AppBar(
+      backgroundColor: AppTheme.organisationHeader,
+      foregroundColor: Colors.white,
+      titleTextStyle: AppTheme.organisationHeaderTitleStyle,
+      title: const Text('Donor analysis'),
+    ),
     body: FutureBuilder<List<AdminEventAnalytics>>(
       future: analytics,
       builder: (context, snapshot) {
@@ -70,6 +77,21 @@ class _DonorAnalysisScreenState extends State<DonorAnalysisScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
           children: [
             SegmentedButton<_AnalysisRange>(
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? AppTheme.organisationPalette[1]
+                      : Colors.transparent,
+                ),
+                foregroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? AppTheme.organisationHeader
+                      : AppTheme.ink,
+                ),
+                side: const WidgetStatePropertyAll(
+                  BorderSide(color: AppTheme.organisationHeader),
+                ),
+              ),
               segments: const [
                 ButtonSegment(
                   value: _AnalysisRange.lastFive,

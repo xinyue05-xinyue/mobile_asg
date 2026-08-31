@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/remote/system_admin_repository.dart';
 import 'user_detail_screen.dart';
@@ -101,7 +102,13 @@ class _UserDirectoryScreenState extends State<UserDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      backgroundColor: AppTheme.systemAdminBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.systemAdminHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.systemAdminHeaderTitleStyle,
+        title: Text(widget.title),
+      ),
       body: FutureBuilder<List<SystemUserSummary>>(
         future: users,
         builder: (context, snapshot) {

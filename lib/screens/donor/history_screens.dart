@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../models/donation_record.dart';
 import '../../models/reward_transaction.dart';
 import '../../data/remote/supabase_service.dart';
@@ -120,7 +121,13 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   late Future<Map<String, String>> details = widget.load();
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title)),
+    backgroundColor: AppTheme.donorBackground,
+    appBar: AppBar(
+      backgroundColor: AppTheme.donorHeader,
+      foregroundColor: Colors.white,
+      titleTextStyle: AppTheme.donorHeaderTitleStyle,
+      title: Text(widget.title),
+    ),
     body: FutureBuilder<Map<String, String>>(
       future: details,
       builder: (context, snapshot) {
@@ -176,7 +183,13 @@ class DonationHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donation history')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Donation history'),
+      ),
       body: donations.isEmpty
           ? const Center(child: Text('No donation records yet.'))
           : ListView.separated(
@@ -228,7 +241,13 @@ class RewardHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reward history')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Reward history'),
+      ),
       body: rewards.isEmpty
           ? const Center(child: Text('No reward transactions yet.'))
           : ListView.separated(

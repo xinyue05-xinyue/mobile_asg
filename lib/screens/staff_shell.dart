@@ -5,10 +5,12 @@ class StaffShell extends StatefulWidget {
     super.key,
     required this.mainPage,
     required this.profilePage,
+    this.scannerPage,
   });
 
   final Widget mainPage;
   final Widget profilePage;
+  final Widget? scannerPage;
 
   @override
   State<StaffShell> createState() => _StaffShellState();
@@ -26,6 +28,12 @@ class _StaffShellState extends State<StaffShell> {
     bottomNavigationBar: _CurvedRoleNavigation(
       selectedIndex: selectedIndex,
       onSelected: (index) => setState(() => selectedIndex = index),
+      onScan: widget.scannerPage == null
+          ? null
+          : () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => widget.scannerPage!),
+            ),
     ),
   );
 }
@@ -34,10 +42,12 @@ class _CurvedRoleNavigation extends StatelessWidget {
   const _CurvedRoleNavigation({
     required this.selectedIndex,
     required this.onSelected,
+    this.onScan,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final VoidCallback? onScan;
 
   @override
   Widget build(BuildContext context) {
@@ -69,38 +79,39 @@ class _CurvedRoleNavigation extends StatelessWidget {
                 onTap: () => onSelected(0),
               ),
             ),
-            Semantics(
-              label: 'QR attendance scanner',
-              button: true,
-              child: InkWell(
-                onTap: () => onSelected(0),
-                customBorder: const CircleBorder(),
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  margin: const EdgeInsets.symmetric(horizontal: 22),
-                  decoration: BoxDecoration(
-                    color: accent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.colorScheme.surface,
-                      width: 5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: .28),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
+            if (onScan != null)
+              Semantics(
+                label: 'QR attendance scanner',
+                button: true,
+                child: InkWell(
+                  onTap: onScan,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    margin: const EdgeInsets.symmetric(horizontal: 22),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.surface,
+                        width: 5,
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_scanner_rounded,
-                    color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withValues(alpha: .28),
+                          blurRadius: 14,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
             Expanded(
               child: _RoleDestination(
                 icon: Icons.person_outline_rounded,

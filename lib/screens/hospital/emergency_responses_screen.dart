@@ -49,7 +49,7 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Verify completed donation?'),
         content: Text(
-          'This creates a verified donation record, awards 100 points, and sets the next eligible date to ${dateLabel(nextDate)} (three months from today). This action cannot be repeated.',
+          'This creates a verified donation record, awards 150 points, and sets the next eligible date to ${dateLabel(nextDate)} (three months from today). This action cannot be repeated.',
         ),
         actions: [
           TextButton(
@@ -75,7 +75,7 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Donation verified and 100 points awarded.'),
+          content: Text('Donation verified and 150 points awarded.'),
         ),
       );
       setState(() {

@@ -6,9 +6,18 @@ import '../screens/login_screen.dart';
 import '../screens/system_admin/feedback_inbox_screen.dart';
 
 class ProfileActions extends StatelessWidget {
-  const ProfileActions({super.key, this.isSystemAdmin = false});
+  const ProfileActions({
+    super.key,
+    this.isSystemAdmin = false,
+    this.useDonorColors = false,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+  });
 
   final bool isSystemAdmin;
+  final bool useDonorColors;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -26,7 +35,11 @@ class ProfileActions extends StatelessWidget {
         MaterialPageRoute(
           builder: (_) => isSystemAdmin
               ? const FeedbackInboxScreen()
-              : const FeedbackScreen(),
+              : FeedbackScreen(
+                  useDonorColors: useDonorColors,
+                  useOrganisationColors: useOrganisationColors,
+                  useHospitalColors: useHospitalColors,
+                ),
         ),
       ),
     ),

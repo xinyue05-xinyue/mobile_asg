@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme/app_theme.dart';
 import '../widgets/profile_actions.dart';
 
 import '../data/remote/organisation_profile_repository.dart';
@@ -7,8 +8,15 @@ import '../models/organisation_profile.dart';
 import 'institution_profile_form_screen.dart';
 
 class StaffProfileScreen extends StatefulWidget {
-  const StaffProfileScreen({super.key, required this.roleLabel});
+  const StaffProfileScreen({
+    super.key,
+    required this.roleLabel,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+  });
   final String roleLabel;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
 
   @override
   State<StaffProfileScreen> createState() => _StaffProfileScreenState();
@@ -42,6 +50,8 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
         builder: (_) => InstitutionProfileFormScreen(
           roleLabel: widget.roleLabel,
           profile: value,
+          useOrganisationColors: widget.useOrganisationColors,
+          useHospitalColors: widget.useHospitalColors,
         ),
       ),
     );
@@ -51,7 +61,26 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: widget.useOrganisationColors
+          ? AppTheme.organisationBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : null,
       appBar: AppBar(
+        backgroundColor: widget.useOrganisationColors
+            ? AppTheme.organisationHeader
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeader
+            : null,
+        foregroundColor:
+            widget.useOrganisationColors || widget.useHospitalColors
+            ? Colors.white
+            : null,
+        titleTextStyle: widget.useOrganisationColors
+            ? AppTheme.organisationHeaderTitleStyle
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : null,
         automaticallyImplyLeading: false,
         title: Text('${widget.roleLabel} Profile'),
         actions: const [ProfileLogoutButton()],
@@ -67,7 +96,10 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const Text('Unable to load profile. Please try again.'),
-                const ProfileActions(),
+                ProfileActions(
+                  useOrganisationColors: widget.useOrganisationColors,
+                  useHospitalColors: widget.useHospitalColors,
+                ),
               ],
             );
           }
@@ -138,11 +170,20 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => edit(value),
+                style: widget.useHospitalColors
+                    ? FilledButton.styleFrom(
+                        backgroundColor: AppTheme.hospital,
+                        foregroundColor: Colors.white,
+                      )
+                    : null,
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Edit institutional profile'),
               ),
               const SizedBox(height: 24),
-              const ProfileActions(),
+              ProfileActions(
+                useOrganisationColors: widget.useOrganisationColors,
+                useHospitalColors: widget.useHospitalColors,
+              ),
             ],
           );
         },

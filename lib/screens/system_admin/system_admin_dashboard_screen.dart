@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/role_request_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/remote/system_admin_repository.dart';
@@ -158,10 +159,17 @@ class _SystemAdminDashboardScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.systemAdminBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.systemAdminHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.systemAdminHeaderTitleStyle,
         automaticallyImplyLeading: false,
         title: const Text('System Administration'),
-        actions: const [StatisticsIconButton(), NotificationButton()],
+        actions: const [
+          StatisticsIconButton(useSystemAdminColors: true),
+          NotificationButton(useSystemAdminColors: true),
+        ],
       ),
       body: FutureBuilder<_SystemAdminData>(
         future: data,

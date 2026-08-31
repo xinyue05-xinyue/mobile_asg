@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../app/theme/app_theme.dart';
 import '../data/repositories/government_data_repository.dart';
 import '../models/government_donation_stat.dart';
 
 class StatisticsScreen extends StatefulWidget {
-  const StatisticsScreen({super.key});
+  const StatisticsScreen({
+    super.key,
+    this.useDonorColors = false,
+    this.useHospitalColors = false,
+    this.useSystemAdminColors = false,
+  });
+
+  final bool useDonorColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   State<StatisticsScreen> createState() => _StatisticsScreenState();
@@ -37,6 +47,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
     final selected = await showModalBottomSheet<DateTime>(
       context: context,
+      backgroundColor: widget.useDonorColors
+          ? AppTheme.donorBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : widget.useSystemAdminColors
+          ? AppTheme.systemAdminBackground
+          : null,
       showDragHandle: true,
       builder: (context) => SafeArea(
         child: ListView(
@@ -74,7 +91,34 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: widget.useDonorColors
+          ? AppTheme.donorBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : widget.useSystemAdminColors
+          ? AppTheme.systemAdminBackground
+          : null,
       appBar: AppBar(
+        backgroundColor: widget.useDonorColors
+            ? AppTheme.donorHeader
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeader
+            : widget.useSystemAdminColors
+            ? AppTheme.systemAdminHeader
+            : null,
+        foregroundColor:
+            widget.useDonorColors ||
+                widget.useHospitalColors ||
+                widget.useSystemAdminColors
+            ? Colors.white
+            : null,
+        titleTextStyle: widget.useDonorColors
+            ? AppTheme.donorHeaderTitleStyle
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : widget.useSystemAdminColors
+            ? AppTheme.systemAdminHeaderTitleStyle
+            : null,
         title: const Text('Donation Statistics'),
         actions: [
           IconButton(
@@ -108,7 +152,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               onRetry: refresh,
             );
           }
-          return _MonthlyOverview(stats: values, onRefresh: refresh);
+          return _MonthlyOverview(
+            stats: values,
+            onRefresh: refresh,
+            useDonorColors: widget.useDonorColors,
+            useHospitalColors: widget.useHospitalColors,
+            useSystemAdminColors: widget.useSystemAdminColors,
+          );
         },
       ),
     );
@@ -116,7 +166,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 }
 
 class StatisticsIconButton extends StatelessWidget {
-  const StatisticsIconButton({super.key});
+  const StatisticsIconButton({
+    super.key,
+    this.useDonorColors = false,
+    this.useHospitalColors = false,
+    this.useSystemAdminColors = false,
+  });
+
+  final bool useDonorColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   Widget build(BuildContext context) {
@@ -125,17 +184,32 @@ class StatisticsIconButton extends StatelessWidget {
       icon: const Icon(Icons.bar_chart_outlined),
       onPressed: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+        MaterialPageRoute(
+          builder: (_) => StatisticsScreen(
+            useDonorColors: useDonorColors,
+            useHospitalColors: useHospitalColors,
+            useSystemAdminColors: useSystemAdminColors,
+          ),
+        ),
       ),
     );
   }
 }
 
 class _MonthlyOverview extends StatelessWidget {
-  const _MonthlyOverview({required this.stats, required this.onRefresh});
+  const _MonthlyOverview({
+    required this.stats,
+    required this.onRefresh,
+    required this.useDonorColors,
+    required this.useHospitalColors,
+    required this.useSystemAdminColors,
+  });
 
   final List<GovernmentDonationStat> stats;
   final Future<void> Function() onRefresh;
+  final bool useDonorColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   Widget build(BuildContext context) {
@@ -239,6 +313,9 @@ class _MonthlyOverview extends StatelessWidget {
                   builder: (_) => _DayDetailScreen(
                     date: row.key,
                     stats: dayGroups[row.key]!,
+                    useDonorColors: useDonorColors,
+                    useHospitalColors: useHospitalColors,
+                    useSystemAdminColors: useSystemAdminColors,
                   ),
                 ),
               ),
@@ -286,10 +363,19 @@ class _InsightCard extends StatelessWidget {
 }
 
 class _DayDetailScreen extends StatelessWidget {
-  const _DayDetailScreen({required this.date, required this.stats});
+  const _DayDetailScreen({
+    required this.date,
+    required this.stats,
+    required this.useDonorColors,
+    required this.useHospitalColors,
+    required this.useSystemAdminColors,
+  });
 
   final DateTime date;
   final List<GovernmentDonationStat> stats;
+  final bool useDonorColors;
+  final bool useHospitalColors;
+  final bool useSystemAdminColors;
 
   @override
   Widget build(BuildContext context) {
@@ -304,7 +390,34 @@ class _DayDetailScreen extends StatelessWidget {
     final maximum = values.values.fold<int>(0, (a, b) => b > a ? b : a);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_dateLabel(date))),
+      backgroundColor: useDonorColors
+          ? AppTheme.donorBackground
+          : useHospitalColors
+          ? AppTheme.hospitalBackground
+          : useSystemAdminColors
+          ? AppTheme.systemAdminBackground
+          : null,
+      appBar: AppBar(
+        backgroundColor: useDonorColors
+            ? AppTheme.donorHeader
+            : useHospitalColors
+            ? AppTheme.hospitalHeader
+            : useSystemAdminColors
+            ? AppTheme.systemAdminHeader
+            : null,
+        foregroundColor:
+            useDonorColors || useHospitalColors || useSystemAdminColors
+            ? Colors.white
+            : null,
+        titleTextStyle: useDonorColors
+            ? AppTheme.donorHeaderTitleStyle
+            : useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : useSystemAdminColors
+            ? AppTheme.systemAdminHeaderTitleStyle
+            : null,
+        title: Text(_dateLabel(date)),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

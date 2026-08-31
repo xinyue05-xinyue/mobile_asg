@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/theme/app_theme.dart';
 import '../../widgets/profile_actions.dart';
 
 import '../../data/remote/profile_repository.dart';
@@ -74,7 +75,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.donorBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
         automaticallyImplyLeading: false,
         title: const Text('My Profile'),
         actions: const [ProfileLogoutButton()],
@@ -241,6 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
+                      style: AppTheme.donorMutedOutlinedButtonStyle,
                       onPressed: openApplication,
                       icon: const Icon(Icons.badge_outlined),
                       label: const Text('Apply for admin or hospital access'),
@@ -248,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 8),
                     _RoleRequests(requestFuture: requests),
                     const SizedBox(height: 24),
-                    const ProfileActions(),
+                    const ProfileActions(useDonorColors: true),
                   ],
                 );
               },
@@ -339,6 +345,7 @@ class _RewardProgressCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
+                style: AppTheme.donorMutedOutlinedButtonStyle,
                 onPressed: onBenefits,
                 icon: const Icon(Icons.workspace_premium_outlined),
                 label: const Text('View my benefits & level'),

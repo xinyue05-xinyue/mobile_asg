@@ -88,7 +88,7 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
     final status = displayStatus(event);
     final canModify = status == 'Upcoming';
     return Card(
-      color: AppTheme.organisationPalette[0],
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -160,14 +160,18 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: AppTheme.organisationPalette[0],
+      color: AppTheme.organisationBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppTheme.donorMutedOutline),
+      ),
       child: ExpansionTile(
         shape: const Border(),
         collapsedShape: const Border(),
         iconColor: AppTheme.organisation,
         collapsedIconColor: AppTheme.organisation,
-        backgroundColor: AppTheme.organisationPalette[0],
-        collapsedBackgroundColor: AppTheme.organisationPalette[0],
+        backgroundColor: AppTheme.organisationBackground,
+        collapsedBackgroundColor: AppTheme.organisationBackground,
         initiallyExpanded: expanded,
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text('${items.length} event${items.length == 1 ? '' : 's'}'),
@@ -187,8 +191,16 @@ class _ManageEventsScreenState extends State<ManageEventsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Events')),
+      backgroundColor: AppTheme.organisationBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
+        title: const Text('Manage Events'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.organisation,
+        foregroundColor: Colors.white,
         onPressed: openForm,
         icon: const Icon(Icons.add),
         label: const Text('Create event'),

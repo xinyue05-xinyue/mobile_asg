@@ -18,6 +18,19 @@ class EmergencyRepository {
     return rows.map(EmergencyRequest.fromMap).toList();
   }
 
+  Future<EmergencyRequest?> getOwnedRequest(String requestId) async {
+    final user = client.auth.currentUser;
+    if (user == null) throw const AuthException('Please log in again.');
+    final rows = await client
+        .from('emergency_requests')
+        .select()
+        .eq('id', requestId)
+        .eq('hospital_id', user.id)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    return EmergencyRequest.fromMap(rows.first);
+  }
+
   Future<List<EmergencyRequest>> getMatchingDonorRequests() async {
     final user = client.auth.currentUser;
     if (user == null) throw const AuthException('Please log in again.');

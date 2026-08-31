@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/event_schedule.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/event_registration_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_event.dart';
@@ -116,10 +117,18 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.event.title)),
+      backgroundColor: AppTheme.organisationBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
+        title: Text(widget.event.title),
+      ),
       floatingActionButton: canVerify
           ? FloatingActionButton.extended(
               onPressed: scanAttendance,
+              backgroundColor: AppTheme.organisation,
+              foregroundColor: Colors.white,
               icon: const Icon(Icons.qr_code_scanner),
               label: const Text('Scan donor QR'),
             )
@@ -143,7 +152,7 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Card(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  color: AppTheme.organisationPalette[1],
                   child: ListTile(
                     leading: const Icon(Icons.info_outline),
                     title: Text(
@@ -175,6 +184,14 @@ class _EventRegistrationsScreenState extends State<EventRegistrationsScreen> {
                           onPressed: canVerify && !verifying
                               ? () => verifyManually(registration)
                               : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.organisation,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                AppTheme.organisationPalette[1],
+                            disabledForegroundColor:
+                                AppTheme.organisationHeader,
+                          ),
                           child: const Text('Verify'),
                         )
                       : null,

@@ -4,38 +4,84 @@ abstract final class AppTheme {
   static const Color primary = Color(0xFFC84F62);
   static const Color background = Color(0xFFFFF8F6);
   static const Color donor = Color(0xFFE5394F);
+  static const Color donorBackground = Color(0xFFFFE7EA);
+  static const Color donorHeader = Color(0xFFC6283E);
+  static const Color donorMutedOutline = Color(0xFFB99299);
+  static const TextStyle donorHeaderTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+  );
+
+  static ButtonStyle get donorMutedOutlinedButtonStyle =>
+      OutlinedButton.styleFrom(
+        foregroundColor: light.colorScheme.primary,
+        minimumSize: const Size(48, 48),
+        side: const BorderSide(color: donorMutedOutline),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      );
+
+  static ButtonStyle get donorPrimaryButtonStyle => FilledButton.styleFrom(
+    backgroundColor: donorHeader,
+    foregroundColor: Colors.white,
+    disabledBackgroundColor: donorMutedOutline.withValues(alpha: .28),
+    disabledForegroundColor: ink.withValues(alpha: .48),
+    minimumSize: const Size(0, 48),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+  );
   static const Color organisation = Color(0xFFE86A3C);
+  static const Color organisationBackground = Color(0xFFFFF1E6);
+  static const Color organisationHeader = Color(0xFFC84A1F);
+  static const TextStyle organisationHeaderTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+  );
   static const Color hospital = Color(0xFFD6457F);
+  static const Color hospitalBackground = Color(0xFFFDE6F0);
+  static const Color hospitalHeader = Color(0xFFB72E68);
+  static const TextStyle hospitalHeaderTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+  );
   static const Color systemAdmin = Color(0xFFA94444);
+  static const Color systemAdminBackground = Color(0xFFFBE9E9);
+  static const Color systemAdminHeader = Color(0xFF7E2E2E);
+  static const TextStyle systemAdminHeaderTitleStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+  );
 
   // Five-step role palettes used consistently across each signed-in workspace.
   static const List<Color> donorPalette = [
-    Color(0xFFFFE7EA),
+    donorBackground,
     Color(0xFFFFC1C8),
     Color(0xFFFF6B7A),
     Color(0xFFE5394F),
-    Color(0xFFC6283E),
+    donorHeader,
   ];
   static const List<Color> organisationPalette = [
-    Color(0xFFFFF1E6),
+    organisationBackground,
     Color(0xFFFFD7B8),
     Color(0xFFFF9A5A),
     Color(0xFFE86A3C),
-    Color(0xFFC84A1F),
+    organisationHeader,
   ];
   static const List<Color> hospitalPalette = [
-    Color(0xFFFDE6F0),
+    hospitalBackground,
     Color(0xFFF9C7DA),
     Color(0xFFF1709C),
     Color(0xFFD6457F),
-    Color(0xFFB72E68),
+    hospitalHeader,
   ];
   static const List<Color> systemAdminPalette = [
-    Color(0xFFFBE9E9),
+    systemAdminBackground,
     Color(0xFFE8C7C7),
     Color(0xFFC86B6B),
     Color(0xFFA94444),
-    Color(0xFF7E2E2E),
+    systemAdminHeader,
   ];
   static const Color ink = Color(0xFF2C2325);
   static const Color muted = Color(0xFF716568);

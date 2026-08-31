@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_event_repository.dart';
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -267,7 +268,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.organisationBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
         title: Text(widget.event == null ? 'Create event' : 'Edit event'),
       ),
       body: Form(
@@ -486,6 +491,12 @@ class _EventFormScreenState extends State<EventFormScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: isSaving ? null : save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.organisation,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.organisationPalette[1],
+                disabledForegroundColor: AppTheme.organisationHeader,
+              ),
               child: isSaving
                   ? const SizedBox.square(
                       dimension: 22,

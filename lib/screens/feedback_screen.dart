@@ -4,12 +4,22 @@ import 'feedback_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../app/theme/app_theme.dart';
 import '../data/remote/feedback_repository.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/user_feedback.dart';
 
 class FeedbackScreen extends StatefulWidget {
-  const FeedbackScreen({super.key});
+  const FeedbackScreen({
+    super.key,
+    this.useDonorColors = false,
+    this.useOrganisationColors = false,
+    this.useHospitalColors = false,
+  });
+
+  final bool useDonorColors;
+  final bool useOrganisationColors;
+  final bool useHospitalColors;
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -152,7 +162,36 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Feedback')),
+      backgroundColor: widget.useDonorColors
+          ? AppTheme.donorBackground
+          : widget.useOrganisationColors
+          ? AppTheme.organisationBackground
+          : widget.useHospitalColors
+          ? AppTheme.hospitalBackground
+          : null,
+      appBar: AppBar(
+        backgroundColor: widget.useDonorColors
+            ? AppTheme.donorHeader
+            : widget.useOrganisationColors
+            ? AppTheme.organisationHeader
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeader
+            : null,
+        foregroundColor:
+            widget.useDonorColors ||
+                widget.useOrganisationColors ||
+                widget.useHospitalColors
+            ? Colors.white
+            : null,
+        titleTextStyle: widget.useDonorColors
+            ? AppTheme.donorHeaderTitleStyle
+            : widget.useOrganisationColors
+            ? AppTheme.organisationHeaderTitleStyle
+            : widget.useHospitalColors
+            ? AppTheme.hospitalHeaderTitleStyle
+            : null,
+        title: const Text('Feedback'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -226,6 +265,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: submitting ? null : submit,
+            style: widget.useOrganisationColors
+                ? FilledButton.styleFrom(
+                    backgroundColor: AppTheme.organisation,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppTheme.organisationPalette[1],
+                    disabledForegroundColor: AppTheme.organisationHeader,
+                  )
+                : widget.useHospitalColors
+                ? FilledButton.styleFrom(
+                    backgroundColor: AppTheme.hospital,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppTheme.hospitalPalette[1],
+                    disabledForegroundColor: AppTheme.hospitalHeader,
+                  )
+                : null,
             icon: submitting
                 ? const SizedBox.square(
                     dimension: 18,
@@ -268,8 +322,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    FeedbackDetailScreen(item: item),
+                                builder: (_) => FeedbackDetailScreen(
+                                  item: item,
+                                  useDonorColors: widget.useDonorColors,
+                                  useOrganisationColors:
+                                      widget.useOrganisationColors,
+                                  useHospitalColors: widget.useHospitalColors,
+                                ),
                               ),
                             );
                             if (mounted) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/institution_details_tile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -74,7 +75,13 @@ class _DonorEmergencyScreenState extends State<DonorEmergencyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Emergency blood requests')),
+      backgroundColor: AppTheme.donorBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
+        title: const Text('Emergency blood requests'),
+      ),
       body: FutureBuilder<_EmergencyData>(
         future: data,
         builder: (context, snapshot) {
@@ -135,6 +142,7 @@ class _DonorEmergencyScreenState extends State<DonorEmergencyScreen> {
                         InstitutionDetailsTile(
                           ownerId: request.hospitalId,
                           label: 'Requested by',
+                          useDonorColors: true,
                         ),
                         Text('Respond before: ${dateLabel(request.deadline)}'),
                         const SizedBox(height: 12),

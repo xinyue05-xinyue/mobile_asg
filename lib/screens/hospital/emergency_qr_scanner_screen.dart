@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_attendance_qr.dart';
@@ -8,8 +9,8 @@ import '../../models/emergency_request.dart';
 import '../../models/emergency_response.dart';
 
 class EmergencyQrScannerScreen extends StatefulWidget {
-  const EmergencyQrScannerScreen({super.key, required this.request});
-  final EmergencyRequest request;
+  const EmergencyQrScannerScreen({super.key, this.request});
+  final EmergencyRequest? request;
 
   @override
   State<EmergencyQrScannerScreen> createState() =>
@@ -42,7 +43,11 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
         : capture.barcodes.first.rawValue;
     if (raw == null) return;
     final qr = EmergencyAttendanceQr.tryParse(raw);
-    if (qr == null || qr.requestId != widget.request.id) {
+    if (qr == null) {
+      _message('This is not a valid MyDarah emergency donation QR.');
+      return;
+    }
+    if (widget.request != null && qr.requestId != widget.request!.id) {
       _message('This QR does not belong to this emergency request.');
       return;
     }
@@ -51,6 +56,14 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
     try {
       final client = SupabaseService.client;
       if (client == null) throw StateError('Please log in again.');
+      final request =
+          widget.request ??
+          await EmergencyRepository(client).getOwnedRequest(qr.requestId);
+      if (request == null) {
+        throw StateError(
+          'This emergency request does not belong to your hospital.',
+        );
+      }
       final repository = EmergencyResponseRepository(client);
       final response = await repository.getForRequestAndDonor(
         requestId: qr.requestId,
@@ -62,14 +75,16 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
       if (response.status != 'pending') {
         throw StateError('This donation has already been processed.');
       }
-      final confirmed = await _confirm(response);
+      final confirmed = await _confirm(request, response);
       if (confirmed != true) return;
       await repository.verifyDonation(
         responseId: response.id,
         nextEligibleDate: threeMonthsFrom(DateTime.now()),
       );
       verifiedCount++;
-      _message('Donation verified. Points and eligibility were updated.');
+      _message(
+        'Attendance verified. 150 points awarded and eligibility updated.',
+      );
     } on Object catch (error) {
       _message('Unable to verify: $error');
     } finally {
@@ -80,13 +95,22 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
     }
   }
 
-  Future<bool?> _confirm(EmergencyResponse response) => showDialog<bool>(
+  Future<bool?> _confirm(
+    EmergencyRequest request,
+    EmergencyResponse response,
+  ) => showDialog<bool>(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       title: const Text('Confirm completed donation'),
       content: Text(
-        '${response.donorName}\nBlood type: ${response.bloodType ?? 'Not set'}\n\nConfirm the donor identity and that blood collection is complete. The next eligible date will be three months from today.',
+        'Emergency request: ${request.bloodType}, '
+        '${request.unitsNeeded} unit${request.unitsNeeded == 1 ? '' : 's'}\n'
+        'Donor: ${response.donorName}\n'
+        'Blood type: ${response.bloodType ?? 'Not set'}\n\n'
+        'Confirm the donor identity and completed blood collection. '
+        'This marks attendance, awards 150 points, and sets the next '
+        'eligible date to three months from today.',
       ),
       actions: [
         TextButton(

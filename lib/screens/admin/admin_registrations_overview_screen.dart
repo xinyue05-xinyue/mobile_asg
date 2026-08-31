@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/event_schedule.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_dashboard_repository.dart';
 import '../../data/remote/supabase_service.dart';
 
@@ -22,7 +23,13 @@ class AdminRegistrationsOverviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donor registrations')),
+      backgroundColor: AppTheme.organisationBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
+        title: const Text('Donor registrations'),
+      ),
       body: FutureBuilder<List<AdminRegistrationDetail>>(
         future: load(),
         builder: (context, snapshot) {

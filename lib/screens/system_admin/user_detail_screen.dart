@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../data/remote/system_admin_repository.dart';
 import '../../models/donor_level.dart';
@@ -61,7 +62,13 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Account details')),
+      backgroundColor: AppTheme.systemAdminBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.systemAdminHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.systemAdminHeaderTitleStyle,
+        title: const Text('Account details'),
+      ),
       body: FutureBuilder<SystemUserDetails>(
         future: details,
         builder: (context, snapshot) {

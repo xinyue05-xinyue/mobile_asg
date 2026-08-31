@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/admin_centre_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/donation_centre.dart';
@@ -42,9 +43,17 @@ class _ManageCentresScreenState extends State<ManageCentresScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Event Venues')),
+      backgroundColor: AppTheme.organisationBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.organisationHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.organisationHeaderTitleStyle,
+        title: const Text('Manage Event Venues'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: openForm,
+        backgroundColor: AppTheme.organisation,
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add_location_alt_outlined),
         label: const Text('Add event venue'),
       ),

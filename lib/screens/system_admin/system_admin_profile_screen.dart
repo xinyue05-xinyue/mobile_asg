@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/theme/app_theme.dart';
 import '../../widgets/profile_actions.dart';
 
 import '../../data/remote/profile_repository.dart';
@@ -87,7 +88,11 @@ class _SystemAdminProfileScreenState extends State<SystemAdminProfileScreen> {
   Widget build(BuildContext context) {
     final email = SupabaseService.client?.auth.currentUser?.email ?? 'Not set';
     return Scaffold(
+      backgroundColor: AppTheme.systemAdminBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.systemAdminHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.systemAdminHeaderTitleStyle,
         automaticallyImplyLeading: false,
         title: const Text('Administrator profile'),
         actions: const [ProfileLogoutButton()],

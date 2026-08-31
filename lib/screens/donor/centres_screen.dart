@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/official_centre_repository.dart';
 import '../../data/repositories/data_sync_service.dart';
 import '../../data/repositories/government_data_repository.dart';
@@ -71,6 +72,7 @@ class _CentresScreenState extends State<CentresScreen> {
     mapController.move(LatLng(centre.latitude, centre.longitude), 14);
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppTheme.donorBackground,
       showDragHandle: true,
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -228,7 +230,11 @@ class _CentresScreenState extends State<CentresScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.donorBackground,
       appBar: AppBar(
+        backgroundColor: AppTheme.donorHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.donorHeaderTitleStyle,
         automaticallyImplyLeading: false,
         title: const Text('Where to donate'),
       ),
@@ -288,6 +294,7 @@ class _CentresScreenState extends State<CentresScreen> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
+                  style: AppTheme.donorMutedOutlinedButtonStyle,
                   onPressed: locating ? null : findNearest,
                   icon: locating
                       ? const SizedBox.square(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../app/theme/app_theme.dart';
 import '../data/remote/supabase_service.dart';
 import '../models/organisation_profile.dart';
 
@@ -10,10 +11,12 @@ class InstitutionDetailsTile extends StatefulWidget {
     required this.ownerId,
     required this.label,
     this.cachedName,
+    this.useDonorColors = false,
   });
   final String? ownerId;
   final String label;
   final String? cachedName;
+  final bool useDonorColors;
   @override
   State<InstitutionDetailsTile> createState() => _InstitutionDetailsTileState();
 }
@@ -57,8 +60,10 @@ class _InstitutionDetailsTileState extends State<InstitutionDetailsTile> {
             : () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      InstitutionPublicProfileScreen(profile: value),
+                  builder: (_) => InstitutionPublicProfileScreen(
+                    profile: value,
+                    useDonorColors: widget.useDonorColors,
+                  ),
                 ),
               ),
       );
@@ -67,8 +72,13 @@ class _InstitutionDetailsTileState extends State<InstitutionDetailsTile> {
 }
 
 class InstitutionPublicProfileScreen extends StatelessWidget {
-  const InstitutionPublicProfileScreen({super.key, required this.profile});
+  const InstitutionPublicProfileScreen({
+    super.key,
+    required this.profile,
+    this.useDonorColors = false,
+  });
   final OrganisationProfile profile;
+  final bool useDonorColors;
   Future<void> directions(BuildContext context) async {
     final destination = profile.latitude != null && profile.longitude != null
         ? '${profile.latitude},${profile.longitude}'
@@ -95,7 +105,13 @@ class InstitutionPublicProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(profile.displayName)),
+    backgroundColor: useDonorColors ? AppTheme.donorBackground : null,
+    appBar: AppBar(
+      backgroundColor: useDonorColors ? AppTheme.donorHeader : null,
+      foregroundColor: useDonorColors ? Colors.white : null,
+      titleTextStyle: useDonorColors ? AppTheme.donorHeaderTitleStyle : null,
+      title: Text(profile.displayName),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -128,6 +144,9 @@ class InstitutionPublicProfileScreen extends StatelessWidget {
         if ((profile.latitude != null && profile.longitude != null) ||
             (profile.address?.trim().isNotEmpty ?? false))
           OutlinedButton.icon(
+            style: useDonorColors
+                ? AppTheme.donorMutedOutlinedButtonStyle
+                : null,
             onPressed: () => directions(context),
             icon: const Icon(Icons.directions_outlined),
             label: const Text('Open directions'),
