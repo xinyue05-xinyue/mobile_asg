@@ -49,7 +49,7 @@ abstract final class AppTheme {
   // organisationHeader     = AppBar/header
   // ---------------------------------------------------------------------------
   static const Color organisation = Color(0xFFE86A3C);
-  static const Color organisationBackground = Color(0xFFFFF9f5);
+  static const Color organisationBackground = Color(0xFFFFF9F5);
   static const Color organisationHeader = Color(0xFFC84A1F);
   static const TextStyle organisationHeaderTitleStyle = TextStyle(
     color: Colors.white,

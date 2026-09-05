@@ -381,6 +381,7 @@ class _RequestCard extends StatelessWidget {
   Future<void> showDetails(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppTheme.hospitalBackground,
       showDragHandle: true,
       builder: (context) => SafeArea(
         child: SingleChildScrollView(
@@ -412,6 +413,10 @@ class _RequestCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.hospital,
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: () {
                     Navigator.pop(context);
                     onOpenResponses(request);

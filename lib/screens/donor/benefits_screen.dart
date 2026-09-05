@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../models/donor_level.dart';
 
 class DonorBenefitsScreen extends StatefulWidget {
   const DonorBenefitsScreen({
@@ -222,9 +221,7 @@ class _TierHero extends StatelessWidget {
         ? 16
         : null;
     final displayTarget = next ?? target;
-    final progress = isCurrent
-        ? DonorLevel.progress(donationCount)
-        : (donationCount / displayTarget).clamp(0.0, 1.0);
+    final progress = (donationCount / displayTarget).clamp(0.0, 1.0);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       padding: const EdgeInsets.all(24),

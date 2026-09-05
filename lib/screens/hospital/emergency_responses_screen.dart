@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
 import '../../models/emergency_request.dart';
@@ -101,6 +102,7 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
   Future<void> showDonor(EmergencyResponse response) async {
     await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppTheme.hospitalBackground,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) => SafeArea(
@@ -146,8 +148,16 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Donor responses')),
+      backgroundColor: AppTheme.hospitalBackground,
+      appBar: AppBar(
+        backgroundColor: AppTheme.hospitalHeader,
+        foregroundColor: Colors.white,
+        titleTextStyle: AppTheme.hospitalHeaderTitleStyle,
+        title: const Text('Donor responses'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.hospital,
+        foregroundColor: Colors.white,
         onPressed: () async {
           await Navigator.push(
             context,
@@ -197,6 +207,13 @@ class _EmergencyResponsesScreenState extends State<EmergencyResponsesScreen> {
                     trailing: response.status != 'pending'
                         ? const Icon(Icons.verified, color: Colors.green)
                         : FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppTheme.hospital,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor:
+                                  AppTheme.hospitalPalette[1],
+                              disabledForegroundColor: AppTheme.hospitalHeader,
+                            ),
                             onPressed: verifyingResponseId == null
                                 ? () => verify(response)
                                 : null,

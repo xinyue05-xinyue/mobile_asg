@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../app/theme/app_theme.dart';
 import '../../data/remote/emergency_repository.dart';
 import '../../data/remote/emergency_response_repository.dart';
 import '../../data/remote/supabase_service.dart';
@@ -102,6 +103,8 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
+      backgroundColor: AppTheme.hospitalBackground,
+      surfaceTintColor: Colors.transparent,
       title: const Text('Confirm completed donation'),
       content: Text(
         'Emergency request: ${request.bloodType}, '
@@ -118,6 +121,10 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.hospital,
+            foregroundColor: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Verify donation'),
         ),
@@ -134,7 +141,13 @@ class _EmergencyQrScannerScreenState extends State<EmergencyQrScannerScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Scan emergency donor QR')),
+    backgroundColor: AppTheme.hospitalBackground,
+    appBar: AppBar(
+      backgroundColor: AppTheme.hospitalHeader,
+      foregroundColor: Colors.white,
+      titleTextStyle: AppTheme.hospitalHeaderTitleStyle,
+      title: const Text('Scan emergency donor QR'),
+    ),
     body: Stack(
       fit: StackFit.expand,
       children: [
