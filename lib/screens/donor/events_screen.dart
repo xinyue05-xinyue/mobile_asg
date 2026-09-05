@@ -824,7 +824,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
                 const SizedBox(height: 12),
                 Card(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: AppTheme.donorBackground.withValues(alpha: .28),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: const BorderSide(color: AppTheme.donorMutedOutline),
